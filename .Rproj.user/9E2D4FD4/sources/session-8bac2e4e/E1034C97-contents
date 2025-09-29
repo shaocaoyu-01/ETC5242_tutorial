@@ -1,0 +1,757 @@
+---
+title: "Week 1, Notes & Exercises"
+subtitle: "Statistical Thinking (ETC2420 / ETC5242)"
+date-format: "[Semester 2,] YYYY"
+date: "2025"
+toc: true
+format:
+  html:
+    embed-resources: true
+---
+
+```{r}
+#| label: setup1
+#| include: false
+knitr::opts_chunk$set(echo = TRUE)
+library(tinytex)
+```
+
+# Introduction
+
+This tutorial provides a hands-on introduction to R and RStudio. It complements
+the material on [StartR](https://startr.numbat.space/), acting both as revision
+and extension of that content.
+
+The structure of this tutorial is typical of what you will do over the
+semester. You will need to think about how to manipulate a given dataset, how
+to visualise it effectively, and what you can learn from it. To start with, we
+focus mostly on developing your knowledge of R and programming skills. As the
+semester progresses, we will shift emphasis to learn and practice statistical
+concepts and skills.
+
+**Learning Goals for Week 1**
+
+-   Use **R** and **RStudio** on your own device.
+-   Learn to install and load **R packages**.
+-   Learn about **Quarto** files and reproducible research.
+-   Learn about the **tidyverse**.
+-   Learn some basic R commands to manipulate and plot data.
+-   Compose your own answers to questions and render a document for submission.
+-   Learn how to diagnose errors.
+
+If you are already a confident user of R and RStudio, this introduction will be
+straightforward. You will finish quickly and can use your time to expand your
+capabilities through the later StartR modules, or investigate other resources.
+You can also use this introduction as a reference later in the unit.
+
+If you are an R beginner, or need a refresher, take you time to work through
+each part of this tutorial. Perhaps make a list of the different packages or
+commands as you learn them, and note on which tutorial or other reference on
+which they appear so that you can find them again when you need to do something
+similar later on.
+
+For everyone, as the unit progresses, you are encouraged to explore beyond what
+the tasks dictate; a willingness to experiment will make you a much better
+programmer and data analyst. It will also give you the space to be able to
+think beyond the code, and to appreciate that having a computational
+perspective can really help you to *understand* data and the relevance (and
+limitations!) of modern statistics/econometrics/actuarial/analytics techniques.
+
+Once you have both R and RStudio installed, you are ready to start the tutorial
+activities. So let's begin with the fundamental building blocks of R and
+RStudio: the interface, reading in data, and some basic commands.
+
+\newpage
+
+# Launch RStudio and create a Project
+
+Go ahead and launch RStudio.
+
+## Project
+
+A project in RStudio is essentially a folder that contains all the relevant
+files in one place. With the help of the project, you don't need to worry about
+whether the file you want to open is in the current working directory (the
+place you are working at).
+
+Create a project for this unit. Go to **File** and then **New Project**. Select
+**New Directory** if you want to create a new folder to contain you files, or
+select **Existing Directory** if you want to use an existing folder.
+
+Be sure to create a data folder; call it `data`, to stick with convention. It
+is up to you how you set up the directories. You could create a folder for each
+week; if so, then also create a `data` folder in each one.
+
+Remember to open this project every time you want to work on this unit. We
+recommend **not** saving the "Workspace image" (the data you have loaded, the
+functions you have defined, etc.) when you quit R or switch to a different
+project, so you can have a fresh start next time you open RStudio.
+
+## Packages
+
+We will use the `tidyverse` and `tinytex` packages (you should have seen these
+in the StartR module), and we will always use them. It is probably the first
+thing that you should add to your Quarto file -- more on this below.
+
+### The tinytex package
+
+The `tinytex` package enables us to generate publication quality documents
+directly to PDF. It also allows us to use LaTeX to create equations in our
+documents. The LaTeX commands also work if we render to HTML, but we need an
+extra step to convert this to PDF. Rendering directly to PDF is our strong
+preference in this unit.
+
+The `tinytex` package can be somewhat temperamental (and takes a while to
+install). If you have any issues, please attend a consultation and we will try
+and help you. Please do not ask for help with tinytex in the tutorial, we will
+not have enough time to diagnose the problem. Simply render to HTML.
+
+### The tidyverse package
+
+The `tidyverse` package is actually a suite of packages, including those that
+are designed for data wrangling and data visualisation. These packages share
+common philosophies and are designed to work together. Over time the packages
+contained within the tidyverse have changed. You can find more about the
+packages in the tidyverse at <https://www.tidyverse.org/>.
+
+Throughout this unit, we will use many of the packages in the tidyverse. For
+today, the key ones are:
+
+-   `readr`: Reads data in from various types of file and makes it available in
+    R.  
+-   `dplyr`: Manipulates data (e.g. transform, filter, select, summarise)
+-   `tidyr`: Tools for putting data into a "tidy" format that is suitable for
+    analysis and plotting.
+-   `ggplot2`: A suite of tools for plotting data.
+
+The other packages in the tidyverse are more specialised, but we will use
+several of them occasionally, including:
+
+-   `purrr`: Primarily useful when you need to do apply the same function to
+    every element of a list.
+-   `stringr`: For manipulating strings (sets of characters).
+-   `forcats`: A toolbox for manipulating categorical variables.
+
+## Install the packages
+
+Throughout the unit we will need more packages. Sometimes this will just be to
+use a specialised function. So we need to learn how to install a new package.
+
+If tidyverse is not already available in your R environment, install it by
+typing the following line of code into the *Console* pane of your RStudio
+session. (You do not need to install the package again if it is already
+installed.)
+
+```{r}
+#| eval: false
+install.packages("tidyverse")
+```
+
+Note: You may need to select a server from which to download; any of the
+servers should work.
+
+You can find the list of installed package names listed in the RStudio
+*Packages* pane. Notice a description of the package and the installed version
+number is also listed.
+
+*An R tip:* In the code above you'll notice that there is an opening bracket
+and a closing bracket. Similarly, the quotation marks (`"`) come in pairs.
+RStudio tries to help you out here by colouring anything inside the quotation
+marks a different colour. And if you put your cursor near a bracket, its pair
+should be highlighted. This will be useful later when we want to do more than
+one thing at a time.
+
+## Load package libraries
+
+Next, you need to load the `tidyverse` package into your current session (you
+shouldn't need to load the `tinytex` package, but you can if you wish). We do
+this with the `library()` function. Run the following lines in your *Console*
+pane:
+
+```{r}
+#| message: false
+library(tidyverse)
+```
+
+You always need to load a package before you can use any of the functions in
+it. This has to be done every time you start a new RStudio session. If you
+forget to do this, R will complain because it won't be able to find the
+function you're looking for.
+
+(R complains a lot. This might be discouraging at first, but don't take it
+personally. It's only a computer system so it is not smart enough to work out
+everything on its own. Treat the warning and errors messages as reminders about
+steps that need to be done.)
+
+Usually a package will only need to be installed on to your machine once, but
+you need to load them each time you start a new RStudio session. We typically
+use the console to install packages, and load packages in a code chunk at the
+beginning of our file (see "[Load Arbuthnot's dataset]" below).
+
+# Quarto
+
+Throughout the semester, we will use **Quarto** files, which have a `.qmd`
+extension, to create *reproducible* tasks and assignments.
+
+These tutorial notes are written in Quarto. For the assessment tasks, you will
+need to submit your Quarto file and your rendered file in PDF format.
+
+## Create a new Quarto file
+
+Go to: **File** → **New File** → **Quarto Document...**.
+
+A window will pop up and your cursor should be on "Untitled". There is also a
+space for the Author and below are selections for file types. In the title box,
+type "Tutorial 1" then OK.
+
+The first few lines (delineated by `---`) are called the YAML header. This is
+where you can set document settings; refer to StartR for more info.
+
+There will be some example text to show you some basic features of Quarto. Have
+a look if you haven't seen it before, and then feel free to delete it.
+
+Quarto has its own typesetting syntax. For example, the hash symbol `#` is used
+to denote section headings.
+
+The Quarto cheatsheet is a handy reference:\
+<https://rstudio.github.io/cheatsheets/html/quarto.html>
+
+## Name and save your Quarto file
+
+We recommend getting into the habit of using a standard format for your
+filenames. The convention we will require for all the work that you will submit
+looks like this:
+
+> `tutorial01_IDnnnnnnnn.qmd`
+
+with your Monash student ID number replacing the segment "`nnnnnnnn`" in the
+filename.
+
+## Install the `knitr` package
+
+You can render your Quarto file and produce either a HTML, DOCX or PDF version
+of your report. Behind the scenes, RStudio does this using the `knitr` package.
+If this isn't already installed, you can install it using the same approach
+described earlier.
+
+This time you may see a warning message, recommending that you let RStudio
+automatically restart R installing the package. Answer **Yes** to the question:
+*Do you want to restart R prior to installing?*
+
+Once the installation is finished, click on the *Render* button, which you will
+see at the top of the *Editor* pane.
+
+Today we will try to render to PDF (if you have `tinytex` installed), which
+will open the PDF file if successful.
+
+If you don't have `tinytex` installed, just render your file to the HTML
+format. When you press the *Render* button, a browser window might pop up to
+display your rendered report, or an **R viewer** (a browser-like window) might
+pop up instead. You can control which one it is by choosing *Preview in Window*
+or *Preview in Viewer Pane* in the drop-down menu just to the right of the
+*Render* button.
+
+## Running code chunks within the Editor pane
+
+If you you want to check whether a line of R code in a code chunk produces the
+desired result, you can:
+
+-   Run the entire chunk, by clicking on the green sideways triangle button in
+    the top right corner of the code chunk, or
+
+-   Run selected code in the chunk, by highlighting the relevant lines of code
+    and then clicking the button marked **Run** on the top right corner of the
+    *Editor* pane.
+
+-   For other options, open the menu next to the **Run** button.
+
+If at any point you need to refresh all of your calculations up to that point,
+you can *Run All Chunks Above* the chunk you’re working in by clicking on the
+down arrow in the code chunk.
+
+## Keeping things neat
+
+Now continue working through the rest of this document. Your first task will be
+to replicate some of these steps using another data set.
+
+Please be sure that the answers you provide to each question are clearly
+labeled, and that the corresponding code chunk is also clearly identified.
+Marks will be given for neat and clear presentation for any submitted work.
+
+# Dr. Arbuthnot’s baptism records
+
+John Arbuthnot was a Scottish physician. In 1710 he published a paper[^1] that
+examined birth records in London for each of the 82 years from 1629 to 1710.
+Actually the data he used were counts of baptisms, by year and gender, but
+these are used as a proxy for the number of births.
+
+[^1]: Arbuthnot, J. (1710). “An argument for divine providence, taken from the
+    constant regularity observed in the births of both sexes,”
+    \textit{Philosophical Transactions of the Royal Society}, Vol 27, pp
+    186–190.
+
+The data from Arbuthnot’s study is contained in the file `arbuthnot.csv`,
+provided with these notes. It consists of three columns, named `year`, `boys`
+and `girls`. The `boys` and `girls` columns show the number of each that were
+born in London for each year as specified in the `year` column.
+
+## Load Arbuthnot's dataset
+
+Save the file `arbuthnot.csv` to your project and put it in a folder called
+`data`.
+
+In your Quarto file, create a new code chunk and add the following code:
+
+```{r}
+#| label: load-packages
+#| eval: true
+#| echo: true
+#| message: false
+library(tidyverse)
+
+arbuthnot <- read_csv("data/arbuthnot.csv")
+```
+
+### A note about code chunks
+
+Code chunks are where Quarto knows to use R and put the results into our
+report. Notice that the chunk is shaded, this reminds us that this section is R
+code.
+
+In Quarto, code chunks are created by typing 3 backticks (\`\`\`) followed by
+"`r`" in curly brackets (no space), then 3 more backticks at the end of the
+chunk.
+
+In the curly brackets, we can also add add a name and set various options. The
+chunk above is named `load-packages` (see this in the Quarto version of the
+notes). The options control how the code will be run and displayed when the
+document is rendered. Some of they key options are:
+
+-   `eval = TRUE` or `eval = FALSE`: Whether to run the code (the default) or
+    not
+-   `echo = TRUE` or `echo = FALSE`: Whether to print the code (the default) or
+    not
+-   `message = TRUE` or `message = FALSE`: Whether or not to print diagnostic
+    messages generated by running the code.
+-   `error = TRUE` or `error = FALSE`: This specifies what to do if any errors
+    occur. The default behaviour is `error = FALSE`, which stops the
+    compilation every time you see an error. If you know the code has an error
+    and you want the document to continue rendering anyway (for example, the
+    purpose of the chunk is to demonstrate a particular error), you can set
+    `error = TRUE`.
+
+We can put any number of these options (and several others) together, separated
+by commas.
+
+The settings for the chunk above will mean that during rendering it will:
+
+-   run the code chunk,
+-   print the code chunk in the output, and
+-   **not** print any diagnostic messages from R.
+
+The code itself loads the `tidyverse` package, then creates a tibble called
+`arbuthnot` by reading in the CSV file. If all has gone well, you should see an
+entry called `arbuthnot` in your Environment tab in the top-right pane in
+RStudio, with 82 observations of 3 variables.
+
+### Keeping your code
+
+While you are working through the tutorial, you may want to compute quantities
+or create plots that are not directly related to an exercise. We suggest that
+you keep these code chunks but hide them from being rendered.
+
+See examples below, in the Quarto versions of these notes.
+
+```{r}
+#| include: false
+# This is an example of a code chunk that will be run but won't be rendered.
+1 + 2
+```
+
+```{r}
+#| eval: false
+#| include: false
+# This is an example of a code chunk that won't be run nor rendered.
+1 + 2
+```
+
+## Tibbles
+
+The `arbuthnot` object you have created is called a *tibble*. This is one of
+R's most important data types and is used widely throughout the tidyverse. It
+holds *rectangular* or *tabular* data. That is, data where each row has the
+same number of entries, so it forms a "rectangle" with a particular number of
+rows and columns. Each column can be different types (numbers, strings, dates,
+etc.)
+
+Tibbles are a relatively recent addition to R and comec from the `tibble`
+package, which is part of the tidyverse. For information, see [Chapter 10, in R
+for Data Science](https://r4ds.had.co.nz/tibbles.html).
+
+*R tip*: Names are case-sensitive in R. That means you can refer to the above
+tibble by `arbuthnot`, but typing `Arbuthnot` will not work.
+
+## The Viewer pane
+
+View the `arbuthnot` tibble by clicking on it in the *Environment* pane. This
+will load into a *Viewer* pane in the upper-left part of RStudio, next to the
+*Editor* pane(s).
+
+The `arbuthnot` tibble contains 82 rows and 3 columns. While you will be able
+to see four columns of numbers in the *Viewer* pane, the first column is not
+actually part of the tibble. Each row represents a different year, shown in the
+first column of the tibble, and the second and third columns contain the
+numbers of boys and girls (respectively) baptised in the year corresponding to
+the entry in column 1. Use the scrollbar on the right-hand side of the *Viewer*
+pane to examine the complete data set.
+
+The format of the tibble is important. Each of the column entries in a given
+row relates to the same year, so the 82 rows correspond to 82 distinct *cases*.
+The three columns represent three different attributes of a case, or
+*variables*, namely the *year*, the number of *boys* baptised and the number of
+*girls* baptised.
+
+You can close the data viewer by clicking on the "$\times$" in the Viewer tab.
+
+## Take a 'glimpse' at the data
+
+Another way to take a look at this tibble is to use the `glimpse()` function:
+
+```{r}
+#| eval: false
+glimpse(arbuthnot)
+```
+
+This function comes from the `broom` package, which is included in the
+tidyverse. To try it out, just type the command above into your *Console* pane.
+
+The `glimpse()` function does not change the format of the tibble, it merely
+uses the tibble as an input, and prints out an alternative format without
+modifying the tibble itself.
+
+You could also include the above line of code in your file, inside a code
+chunk. Make sure it comes *after* the command that loads the dataset (you have
+to load the data before you can do something with it!).
+
+## Print a variable
+
+We can access a variable contained in a single column of a tibble using command
+such as:
+
+```{r}
+arbuthnot$boys
+```
+
+This command will only show the number of boys baptised each year. The dollar
+sign (`$`) extracts the column of the tibble according to the name that follows
+it, in this case it takes the column `boys` from the tibble `arbuthnot`.
+
+*RStudio tip:* When you are typing, you can often just type the first few
+characters and then press the tab key on your keyboard to complete the typing
+for you. When there are multiple options, they will pop up for you to see. Try
+typing `arbuthnot$` and then press the tab key. You should see the three column
+names come up as options.
+
+Notice the way R has printed these data. When we looked at the complete tibble,
+we saw 82 rows, one on each line of the display. Now having extracted only a
+single column, the data are no longer structured in a table with other
+variables, and instead are displayed one after another. This object is an
+example of a *vector*, which is used to represent a set of numbers of the same
+type. R has added numbers in square brackets along the left-hand side of the
+printout to indicate locations within the vector. For example, 5218 follows
+`[1]`, indicating that 5218 is the first entry in the vector. And if \[33\]
+starts a line, then that would mean the first number on that line would
+represent the 33rd entry in the vector.
+
+***Exercise 1***
+
+1.  What line of R code would you use to extract the vector containing just the
+    counts of girls baptised? Would it be a good idea to print it in an
+    assignment?
+
+## Data visualisation
+
+R has some powerful functions for making graphics easily. We can create a
+simple plot of the number of girls baptised per year with the command:
+
+```{r}
+#| fig-width: 5
+#| fig-height: 4
+ggplot(data = arbuthnot, aes(x = year, y = girls)) +
+  geom_point()
+```
+
+We use the `ggplot()` function to build plots as follows:
+
+-   The first argument is always the dataset.
+
+-   Next, you specify how the variables from the dataset should be assigned to
+    visual dimensions ("aesthetics") of the plot, such as the x- and y-axes.
+    You do this with the command: `aes(x = x_variable, y = y_variable)`.
+
+-   Finally, you specify geometric objects ("geoms") to add to the plot.
+    Somewhat unconventionally, these are added using the plus symbol (`+`). In
+    this case, we want to create a scatter plot, so we draw points by using
+    `geom_point()`. If you want a line plot instead, you would use
+    `geom_line()`.
+
+We can customise the visualisation further in many different ways. For example,
+to draw pink triangles instead of black circles, we would use:
+`geom_point(colour = "pink", shape = 17)`.
+
+To find out more, a good reference is the ggplot2 cheat sheet:
+<https://rstudio.github.io/cheatsheets/html/data-visualization.html>
+
+R also documents all of its functions extensively. To learn what a function
+does and its arguments that are available to you, just type in a question mark
+followed by the name of the function that you’re interested in. Try the
+following in your *Console*:
+
+```{r}
+#| eval: false
+#| echo: true
+?ggplot
+```
+
+Notice that the help file appears in the lower-right panel. You can toggle
+between plots and help files using the tabs at the top of that panel.
+
+Finally, if you ever get stuck or get an error message that is confusing, you
+can usually find help online. Type the error message into Google and it will
+very often point you to the answer.
+
+***Exercise 2***
+
+2.  Is there an apparent trend in the number of girls baptized over the years?
+    How would you describe it? Are there any interesting features?
+
+## R as a big calculator
+
+Now, suppose we want to plot the total number of baptisms over time. To compute
+the total, we could use the fact that R is really just a big calculator. We can
+type in mathematical expressions like:
+
+```{r}
+#| eval: false
+#| echo: true
+5218 + 4683
+```
+
+to get the total number of baptisms in 1629. We could repeat this once for each
+year, but there is a faster way. If we add the *vector* of baptisms for boys to
+that of girls, R will compute *all* sums with only a single command.
+
+```{r}
+#| eval: false
+#| echo: true
+arbuthnot$boys + arbuthnot$girls
+```
+
+When you run this command, you will see it prints a vector containing 82
+numbers, each one representing the sum we’re after for each year in the data
+set. (Take a look at a few of them and verify that they are right.)
+
+Unfortunately, the command above doesn't save the results. We could define a
+new object, using the command:
+
+```{r}
+#| eval: false
+#| echo: true
+total <- arbuthnot$boys + arbuthnot$girls
+```
+
+However, the vector named `total` created in the above code chunk would be
+completely separate from the original `arbuthnot` tibble. It would be more
+convenient to include the constructed `total` variable as another column in the
+tibble.
+
+## Adding new variables to a tibble
+
+Since we want to use this new `total` vector to generate some plots, we’ll want
+to save it as a new column in the `arbuthnot` tibble. We do this using the
+`mutate()` command from the `dplyr` package (loaded as part of the tidyverse).
+This is a useful function that will add new columns to a tibble that are
+constructed from the old columns.
+
+We can do it as follows:
+
+```{r}
+#| eval: true
+#| echo: true
+arbuthnot <- mutate(arbuthnot, total = boys + girls)
+```
+
+It is possible to add several new columns at once. We just specify each one in
+turn, as a separate argument. For instance, if we also wanted a sex ratio
+(girls/boys), we could get that with:
+
+```{r}
+#| eval: true
+#| echo: true
+arbuthnot <- mutate(arbuthnot, total = boys + girls, ratio = girls / boys)
+```
+
+If we also wanted the proportion of girls, we could add that too:
+
+```{r}
+#| eval: true
+#| echo: true
+arbuthnot <- mutate(arbuthnot,
+                    total      = boys + girls,
+                    ratio      = girls / boys,
+                    prop_girls = girls / total)
+```
+
+Notice that we used `total` as part of our definition of `prop_girls`. This
+works fine because `mutate()` evaluates the arguments in turn from left to
+right, which means the `total` column exists by the time we get to
+`prop_girls`. In contrast, the following version would generate an error
+because `total` doesn't exist:
+
+```{r}
+#| eval: true
+#| echo: true
+#| error: true
+arbuthnot <- mutate(arbuthnot,
+                    prop_girls = girls / total,
+                    total      = boys + girls, 
+                    ratio      = girls / boys)
+```
+
+In addition to simple mathematical operators like subtraction and division, you
+can ask R to make comparisons like greater than (`>`), less than (`<`), and
+equality (`==`). For example, we can ask if the number of births of boys
+outnumber that of girls in each year with the expression:
+
+```{r}
+#| eval: true
+#| echo: true
+arbuthnot <- mutate(arbuthnot, more_boys = boys > girls)
+```
+
+This command adds a new variable to the `arbuthnot` tibble containing the
+values `TRUE` or `FALSE` depending on whether the respective year had more boys
+than girls. This variable contains a different kind of data than we have
+encountered so far. All other columns in the `arbuthnot` tibble have values
+that are numerical (the year, and the number of boys and girls). Here, we have
+now asked R to create logical variables (also known as Boolean variables),
+which only have the values `TRUE` or `FALSE`. In general, data analysis will
+involve many different kinds of data types. One reason for using R is that it
+is easily able to represent and compute with many of them.
+
+***Exercises 3--4***
+
+3.  Draw a line plot of the total number of baptisms per year.
+
+4.  How often were there more boys born than girls?
+
+# Better R coding
+
+## Coding in style
+
+In some of the previous code chunks, we wrapped the code over several lines and
+indented the code to make it more readable. This is good practice, to help
+others (and your future self) easily understand your code.
+
+There are a few things to remember when doing wrapping code:
+
+-   You can only wrap lines that are inside brackets. Otherwise R doesn't know
+    that there's more coming.
+-   You should end every line with an indication that some more code is coming.
+    Here we have a comma (`,`) at the end of each line, but a `+` or anything
+    that requires something to the right of it will work.
+
+Some other points of style to notice:
+
+-   All names are in lower case
+-   Words in the same name are separated by underscores (`_`)
+-   There are spaces on either side of operators (`+`, `/`, `<-`)
+-   There is one space to the right of each comma
+-   There is no space near brackets.
+
+This might seem super pedantic and annoying, but it's one of the most important
+but least flashy coding skills. Keeping consistent style that is easy to read
+is a core professional standard. The tidyverse style guide
+(<https://style.tidyverse.org>) is a handy reference that we recommend you
+follow when writing your R code.
+
+## Simplicity via piping
+
+An important element of modern R code is the %\>% operator, which is called the
+*pipe operator*. Pretty much all of the commands above should be piped, to
+improve readability.
+
+If you've never seen it before, it can seem like a bit of an odd beast. It does
+one simple thing: it takes the output of the expression on the left and inserts
+("pipes") it into the first argument of the function that follows it.
+
+In the language of mathematical functions, $x$ %\>% $f(y)$ is equivalent to
+$f(x, y)$.
+
+For example, we could write that first mutate statement in the previous section
+as follows:
+
+```{r}
+#| eval: false
+arbuthnot <- arbuthnot %>% mutate(total = boys + girls)
+```
+
+Here's how to interpret what the code is doing:
+
+“Take the `arbuthnot` dataset and pipe it into the `mutate()` function. Mutate
+the `arbuthnot` tibble by creating a new variable, called `total`, that is the
+sum of the variables called `boys` and `girls`. Then assign the resulting
+tibble to the object called `arbuthnot`. In other words, overwrite the old
+`arbuthnot` tibble with the new version that contains the new variable.”
+
+This is equivalent to going through each row and adding up the boys and girls
+counts for that year and recording that value in a new column called `total`.
+
+The assignment operator (`<-`) takes the output of everything to the right of
+it and saves it into the object on its left. In this case, since we already
+have an object called `arbuthnot`, this command updates (overwrites) it with
+the version we obtain after running `mutate()`.
+
+What makes the piping approach so powerful is that you can chain several pipes
+together.
+
+For instance the following commands give the same output:
+
+```{r}
+#| eval: false
+# Version without piping.
+arbuthnot_mutated <- mutate(arbuthnot, total = boys + girls, ratio = girls / boys)
+
+# Version using piping.
+arbuthnot_mutated <- arbuthnot %>% 
+  mutate(total = boys + girls) %>%
+  mutate(ratio = girls / boys)
+```
+
+The code using pipes is easier to read because each line is doing a single
+step. We can read it as follows:
+
+"Take `arbuthnot`, add a `total` column and then add a `ratio` column."
+
+## Commenting out code
+
+The code chunk above shows how to add comments to code using `#`. This allows
+you to add any text to your code and R won't try to run it.
+
+One handy way to use this is to "turn off" any code that you no longer wish to
+run, but would like to retain for later. This is called "commenting out" the
+code.
+
+```{r}
+#arbuthnot$boys    <-- this code will not run
+arbuthnot$girls  # <-- this code will run
+```
+
+***Exercises 5--7***
+
+5.  Draw a plot of the proportion of boys born over time. What do you see?
+
+6.  Discuss this plot. Can it be improved?
+
+7.  Use the internet or help in R to create a **TERRIBLE** graph, which has
+    none of the good attributes from exercise 6.

@@ -1,0 +1,411 @@
+---
+title: "Week 2, Notes & Exercises"
+subtitle: "Statistical Thinking (ETC2420 / ETC5242)"
+date-format: "[Semester 2,] YYYY"
+date: "2025"
+toc: true
+format:
+  html:
+    embed-resources: true
+---
+
+```{r}
+#| label: setup
+#| include: false
+knitr::opts_chunk$set(echo    = TRUE,
+                      message = FALSE,
+                      warning = FALSE,
+                      echo    = TRUE,
+                      eval    = TRUE)
+set.seed(24205242)
+
+library(tidyverse)
+```
+
+# Introduction
+
+In this tutorial we will practise doing probability calculations in R, using
+simulation as a tool to answer tricky questions, modelling using probability
+distributions, and using randomisation as part of designing a study.
+
+# Working with probability distributions
+
+R has functions for calculating with many different distributions, to get a
+full list of those available in a standard R installation, run the following
+command:
+
+```{r}
+#| eval: false
+help(Distributions)
+```
+
+The functions for each distribution use a similar interface and conventions,
+which we illustrate here first by looking at the normal distribution.
+
+## Normal distribution
+
+For most distributions, R provides four functions. The convention is that each
+function has the same name with but a prefix to denote what the function does.
+Here are the four functions for the normal distribution:
+
+-   `dnorm()` -- calculates the probability density function (pdf)
+-   `pnorm()` -- calculates the cumulative distribution function (cdf)
+-   `qnorm()` -- calculates quantiles (inverse cdf)
+-   `rnorm()` -- generates random numbers
+
+Given a set of values, `dnorm()` returns the value of the pdf at each point.
+The default is to work with a standard normal distribution ($\mu = 0$ and
+$\sigma = 1$), but you can change this by specifying different function
+arguments (see the help page for more info). Try the following and think about
+what each one is calculating (discuss and compare your ideas with your
+classmates):
+
+```{r}
+#| eval: false
+dnorm(0)
+dnorm(0) * sqrt(2 * pi)
+dnorm(0, mean = 4, sd = 2)
+dnorm(c(-1, 0, 1))
+x <- seq(-20, 20, by = 0.1)
+y <- dnorm(x)
+ggplot() + aes(x = x, y = y) + geom_point()
+y <- dnorm(x, mean = 2.5, sd = 0.5)
+ggplot() + aes(x = x, y = y) + geom_point()
+```
+
+The function `pnorm()` is similar, but it calculates the cdf instead of the
+pdf. Thus, the output consists of actual probabilities rather than probability
+densities. Try the following and think about what each one is calculating
+(discuss and compare your ideas with your classmates):
+
+```{r}
+#| eval: false
+pnorm(0)
+pnorm(1)
+pnorm(1, lower.tail = FALSE)
+pnorm(0, mean = 2, sd = 3)
+x <- seq(-20, 20, by = 0.1)
+y <- pnorm(x)
+ggplot() + aes(x = x, y = y) + geom_point()
+y <- pnorm(x, mean = 3, sd = 4)
+ggplot() + aes(x = x, y = y) + geom_point()
+```
+
+The function `qnorm()` does the inverse of `pnorm()`. The input needs to be a
+probability, and it will return the quantile that corresponds to that
+probability. Try the following and think about what each one is calculating
+(discuss and compare your ideas with your classmates):
+
+```{r}
+#| eval: false
+qnorm(c(0.25, 0.5, 0.75), mean = 1, sd = 2)
+x <- seq(0, 1, by = 0.05)
+y <- qnorm(x)
+ggplot() + aes(x = x, y = y) + geom_point()
+y <- qnorm(x, mean = 3, sd = 2)
+ggplot() + aes(x = x, y = y) + geom_point()
+y <- qnorm(x, mean = 3, sd = 0.1)
+ggplot() + aes(x = x, y = y) + geom_point()
+```
+
+The function `rnorm()` is a bit different to the others. Rather than
+calculating some aspect of a normal distribution, it will randomly generate
+realisations from it. The first argument to the function is the number of
+realisations you want. Try the following and think about what each one is
+calculating (discuss and compare your ideas with your classmates):
+
+```{r}
+#| eval: false
+rnorm(6)
+rnorm(6, mean = 3, sd = 3)
+y <- rnorm(250)
+ggplot() + aes(x = y) + geom_histogram()
+y <- rnorm(250, mean = -2)
+ggplot() + aes(x = y) + geom_histogram()
+```
+
+## Binomial distributions
+
+R has the same set of four functions for working with a binomial distribution,
+similar to the ones shown above for the normal distribution. Run
+`help("Binomial")` to see the help page that lists them.
+
+You use them in exactly the same way. However, note that the binomial
+distribution is discrete rather than continuous, so it will have a probability
+mass function (pmf) rather than a probability density function (pdf).
+
+The function `dbinom()` in fact calculates the pmf, despite the 'd' in its
+name. That means the following code calculates a true probability, not a
+density:
+
+```{r}
+dbinom(3, size = 5, prob = 0.4)
+```
+
+This calculates $\Pr(X = 3)$ where $X \sim \mathrm{Bi}(5, 0.4)$.
+
+This is possibly a little confusing if you think of the `d-` prefix as an
+abbreviation for 'density', but it does at least maintain a consistent
+convention across all of the distributions. Namely, for continuous
+distributions the `d-` function gives a pdf, and for discrete distributions it
+gives a pmf.
+
+The function `pbinom()` calculates a cdf, similar to the corresponding normal
+example above. However, since it is discrete we need to remember that the
+probability **includes** the specified value. For example:
+
+```{r}
+pbinom(3, size = 5, prob = 0.4)
+```
+
+This calculates $\Pr(X \leqslant 3)$ where $X \sim \mathrm{Bi}(5, 0.4)$. If
+instead we wanted $\Pr(X < 3)$, then we should actually calculate
+$\Pr(X \leqslant 2)$.
+
+## Arbitrary finite discrete distributions
+
+You can use the `sample()` function to simulate from any finite discrete
+distribution, by specifying a set of values and associated probabilities.
+
+For example, to select a random day of the week, where the chance of a weekend
+is 50% and a weekday is 50%, you could use:
+
+```{r}
+days <- c("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+prob <- c(  0.1,   0.1,   0.1,   0.1,   0.1,  0.25,  0.25)
+sample(days, size = 1, prob = prob)
+```
+
+Note that the default is to sample **without** replacement. If you want
+independent and identically distributed (iid) realisations then you need so
+specify `replace = TRUE`.
+
+For example, to generate 10 coin flips, you could use:
+
+```{r}
+sample(c("H", "T"), size = 10, replace = TRUE)
+```
+
+If we do not specify the `prob` argument, then R will make each value equally
+likely.
+
+If we do not specify the `size` argument, then R will return as many items as
+given in the first argument. If we also do not specify the `replace` argument
+(or set it to `FALSE`), then this simply means that R will return a random
+permutation (a "random shuffle") of the given values. For example, a random
+order of the days of the week can be obtained using:
+
+```{r}
+sample(days)
+```
+
+## Exercises
+
+1.  Calculate the following probabilities using R.
+
+    a)  The probability of getting exactly 4 heads when flipping a fair coin 8
+        times.
+    b)  The probability of getting at most 15 heads when flipping a fair coin
+        28 times.
+    c)  The probability of getting more than 12 heads when flipping a fair coin
+        18 times.
+    d)  The probability of getting an odd number of heads when flipping a fair
+        coin 14 times.
+
+2.  Explore the Poisson distribution. Find its help page. Calculate the
+    following for a Poisson distribution with parameter $\lambda = 5$:
+
+    a)  The probability of observing a 3.
+    b)  The probability of observing a number of at most 2.
+    c)  The probability of observing a number of at least 4.
+    d)  Generate 6 realisations.
+
+3.  Calculate the following quantiles using R:
+
+    a)  The 75th percentile (0.75 quantile) of a standard normal.
+    b)  The 30th percentile of a t-distribution with 10 degrees of freedom.
+    c)  The median of a gamma distribution with shape parameter 2 and rate
+        parameter 3.
+
+4.  Let $X_1, X_2, \dots, X_9$ be a random sample. We are told that
+    $\mathbb{E}(X_3) = 7$ and $\mathrm{var}(X_4) = 4$.
+
+    a)  What is $\mathrm{sd}(X_2)$?
+    b)  What is $\mathrm{var}(X_7 + X_8)$?
+    c)  What is an approximate distribution of the sample mean, $\bar{X}$?
+
+5.  Let $X \sim \mathrm{N}(1, 2)$. What is $\mathbb{E}(X^2)$? Approximate this
+    by simulating a large number of normal random variables and doing an
+    appropriate calculation.
+
+6.  Use simulations to verify the law of large numbers (LLN) when sampling from
+    each of the following distributions:
+
+    a)  Normal
+    b)  Exponential
+    c)  Poisson
+    d)  Cauchy
+
+    What do you notice? Can you explain your findings?
+
+# Solving problems via simulation
+
+> In a group of 30 students, what is the probability of that at least two of
+> them share the same birthday (month and day)?
+
+This can be tricky to answer correctly using mathematical derivations, but is
+trivial to quickly approximate the answer using computer simulations. You saw
+this demonstrated in the lectures. Let's try another such problem.
+
+## Lunch for two
+
+> You decide to have lunch at your favourite cafe today, and arrive there at a
+> random time between 12pm and 1pm. Your friend also arrives there at a random
+> time between 12pm and 1pm. Each of you stay exactly 30 minutes at the cafe.
+> What is the probability that the two of you will meet at the cafe?
+
+For convenience, we can we model the arrival time as a number between 0 and 1.
+This makes each person's arrival time follow uniform distribution on the
+interval $[0,1]$. Let's simulate many such arrival times:
+
+```{r}
+N <- 5000
+person1 <- runif(N, min = 0, max = 1)
+person2 <- runif(N, min = 0, max = 1)
+```
+
+The two people will meet if their arrival times are within 30 minutes of each
+other, which corresponds to a difference of 0.5 in this mode. Thus, we can
+count how often the simulated values differ by 0.5.
+
+```{r}
+did_meet <- abs(person1 - person2) < 0.5
+mean(did_meet)
+```
+
+We see that there's about a 75% chance of meeting.
+
+## Just keep flipping
+
+Sometimes it is easier to use a loop when creating a simulation. Consider the
+following problem:
+
+> What's the expected number of coin ﬂips until you get two heads in a row?
+
+We need to simulate coin flips, stopping when we get two in a row, but keeping
+a count of how many flips we have done. Let's write a function to carry that
+out:
+
+```{r}
+flips_simulation <- function() {
+  # Initialise counts.
+  num_flips <- 0
+  num_heads_in_row <- 0
+  
+  # Keep flipping coins until you get 2 in a row.
+  while (num_heads_in_row < 2) {
+    
+    # Flip a coin.
+    new_flip  <- sample(c("H", "T"), size = 1)
+    num_flips <- num_flips + 1
+    
+    # Increment the counts, depending on what you flipped.
+    if (new_flip == "H") {
+        num_heads_in_row <- num_heads_in_row + 1
+      } else {
+        num_heads_in_row <- 0
+      }
+  }
+
+  return(num_flips)
+}
+```
+
+Now we just need to run that over and over. The handy `replicate()` function
+lets us do that easily:
+
+```{r}
+num_flips <- replicate(5000, flips_simulation())
+mean(num_flips)
+```
+
+We expect to flip the coin about 6 times until we get two heads in a row.
+
+## Exercises
+
+7.  You have 20 letters and 20 envelopes. Each letter belongs to a speciﬁc
+    envelope. You place the letters randomly in the envelopes, with one letter
+    per envelope. What is the expected number of letters that will be in their
+    correct envelope?
+
+8.  You take a wooden ruler and break it into two parts at random point
+    uniformly along its length. Compare to the original length of the ruler,
+    what is the expected length of the smaller part?
+
+9.  You toss a fair coin repeatedly until you get 5 tails in a row. What is the
+    expected number of coin tosses?
+
+10. You play the following game: You roll a fair die (equally likely to get any
+    of the integers 1 to 6). If the die shows any number from 1 to 5, that is
+    your score. However, if it shows a 6, then you score 5 points and get to
+    roll the die again. This can continue many times, each time adding the
+    number to your score until you no longer roll a 6. What is your expected
+    score?
+
+11. Consider again the birthday problem from the lecture. What is the minimum
+    number of students you need to have more than a 50% probability of having
+    at two students that share a birthday?
+
+# Modelling using probability
+
+The following exercise involves creating a probability model for a given
+scenario, and using simulations to explore properties of that scenario.
+
+## Exercise
+
+12. My journey to campus each day involves taking a tram, then a train, then a
+    bus. The duration of each leg can be modelled with gamma distributions, as
+    follows:
+
+    -   **Tram**: gamma with shape 40 and rate 4
+    -   **Train**: gamma with shape 120 and rate 6
+    -   **Bus**: gamma with shape 35 and rate 5
+
+    Simulate and visualise the distribution of the total journey time.
+    Approximate the mean and standard deviation of this distribution. What's
+    the probability that it takes me longer than 40 minutes to get to campus?
+
+# Study design
+
+For the following exercises, you need to use randomisation to complete a task
+in the design of each study. Use the `sample()` function in each case.
+
+## Exercises
+
+13. You are investigating the energy efficiency of houses along a major road.
+    There are 500 houses along the road, having street numbers consecutively
+    from 1 to 500. You won't have time to inspect every house, but can survey
+    20 of them to determine their energy ratings. You plan to do this via a
+    random sample. Generate a list of 20 houses to inspect.
+
+14. You wish to learn about the experience of students and educators at a
+    university, via a survey of 30 people. At this university, there are 5000
+    students and 200 educators. In the personnel database, the students have ID
+    numbers 1 to 5000, and the educators have ID numbers 9001 to 9200. For your
+    survey, you want half of your sample to be students and half to be
+    educators. Design a suitable sample. (Note: this will require you to
+    generate separate random samples of students and educators. This is known
+    as a **stratified random sample**.)
+
+15. You have developed a new soft drink and are wondering whether the colour of
+    the can makes a difference to how people perceive the taste and their
+    willingness to buy it. You wish to examine this via an experiment. You
+    recruit 40 participants and have cans in two different colours, green and
+    orange.
+
+    a)  Assign the cans randomly to the participants, so that half receive
+        green cans and half receive orange cans.
+    b)  Your business partner tries to replicate your experiment, using a
+        separate set of participants, but instead of randomly allocating the
+        cans he allowed the participants to choose which one they wanted. Which
+        version of the experiment is more useful, and why?
