@@ -1,0 +1,506 @@
+---
+title: "Week 3, Notes & Exercises"
+subtitle: "Statistical Thinking (ETC2420 / ETC5242)"
+date-format: "[Semester 2,] YYYY"
+date: "2025"
+toc: true
+format:
+  html:
+    embed-resources: true
+---
+
+```{r}
+#| label: setup
+#| include: false
+#| warning: false
+#| error: false
+#| message: false
+knitr::opts_chunk$set(message = FALSE,
+                      echo    = TRUE,
+                      eval    = TRUE,
+                      fig.height = 3,
+                      fig.width  = 7)
+```
+
+```{r}
+#| eval: true
+library(tidyverse)
+library(kableExtra)
+library(gridExtra)
+library(ggthemes)
+theme_set(theme_minimal(base_size = 12))
+```
+
+# Introduction
+
+This week we explore estimating parameters of interest, focusing on population
+means or comparisons of means between groups. We will practise working with
+real data, including creating appropriate visualisations and interpreting the
+results.
+
+The key statistical tool we use is **confidence intervals**. We will practise
+calculating these "by hand" as well as with the `t.test()` function. We also
+explore scenarios with both "paired" and "unpaired" data.
+
+We also explore how to use simulations to compare different estimators.
+
+To record your work, you should either create a new Quarto file or download the
+Quarto version of these notes, in which you can add your own notes and
+responses to each of the exercises.
+
+# Michaelson's Speed of Light Data
+
+## Setting up
+
+The `morley` data frame contains observations from experiments undertaken by
+Albert Michelson in 1879 that aimed to measure the speed of light.[^1] There
+were a total of 100 measurements (`Speed`), coming from five different
+experiments (`Expt`), each repeated 20 times (`Run`).
+
+[^1]: Michelson A (1882). [Experimental Determination of the Velocity of Light
+    Made at the U.S. Naval Academy,
+    Annapolis](http://www.gutenberg.org/files/11753/11753-h/11753-h.htm).
+    *Astronomic Papers* 1:135--138. U.S. Nautical Almanac Office.
+
+We are interested to see how the results from these experiments undertaken more
+than 140 years ago compare to our current knowledge. According to Wikipedia,
+the speed of light in a vacuum is 299,792,458 metres per second.[^2] Note that
+the `Speed` variable in the `morley` data frame represents the recorded speed
+in kilometres per second (km/s) after subtracting 299,000 km/s. Therefore, the
+value from Wikipedia corresponds to $\mu_W = 792.458$ on that scale.
+
+[^2]: <https://en.wikipedia.org/wiki/Speed_of_light>, accessed on 1 August
+    2024.
+
+Let $\mu$ represent the population average measurement from the Michelson's
+experimental setup. In other words, if we could repeat the experimental runs
+identically a large number of times, the average measurement across them would
+be $\mu$. For the purpose of today's tutorial, assume that all of experiments
+and runs within the experiments, are independent and were run in an identical
+manner. Therefore, we will treat the 100 distinct `Speed` values as a random
+sample from this population.
+
+The `morley` data frame should already be available in your R session (it is
+part of the `datasets` package, which is installed by default with a standard R
+installation). Let's convert it to a tibble so we can use the tidyverse
+packages to work with it:
+
+```{r}
+light <- as_tibble(morley)
+```
+
+## Data visualisation
+
+The data are continuous, so we could visualise them with a histogram. We'll
+leave this as an exercise for you (see below). Instead, we demonstrate how to
+draw an estimated density plot (smoothed histogram) of the `Speed` variable
+(ignoring the `Experiment` and `Run` variables). We also add vertical lines to
+show some important values: red for the sample mean, blue for $\mu_W$.
+
+```{r}
+#| warning: false
+light |>
+  ggplot(aes(x = Speed, y = after_stat(density))) +
+  geom_density(fill = "cornsilk") +
+  geom_vline(xintercept = mean(light$Speed), colour = "red") +
+  annotate("text", x = mean(light$Speed), y = 0.0005, hjust = 0,
+           label = "Sample mean", color = "red") +
+  geom_vline(xintercept = 792.458, color = "blue") +
+  annotate("text", x = 792.458, y = 0.0005, hjust = 1,
+           label = "Wikipedia mean", color = "blue") +
+  xlab("Speed (km/s, above 299,000)")
+```
+
+***Exercises 1--2***
+
+1.  Describe these data. What conclusions can you draw from the plot?
+
+2.  Draw a histogram of these data.
+
+## Summarise the data
+
+Now let's produce a summary table, based on all 100 observations, containing
+the average speed ("mean"), the median speed ("median"), the standard deviation
+of the speed ("SD") and the interquartile range ("IQR").
+
+```{r}
+light_summary <- light |>
+    summarise(n = n(), mean = mean(Speed), median = median(Speed),
+              SD = sd(Speed), IQR = IQR(Speed))
+
+light_summary |>
+    kable() |>
+    kable_styling(latex_options = "hold_position")
+```
+
+In the above code, the first command creates the summaries, while the second
+one prints them out in a table. Both of these can be customised in many ways.
+For example, the `SD` statistic is displayed with far too many significant
+figures.[^3] We can specify that we want fewer by using the `digits` argument
+in `kable()`:
+
+[^3]: For a detailed discussion about significant figures and statistics, see
+    [A note on significant figures].
+
+```{r}
+light_summary |>
+    kable(digits = 1) |>
+    kable_styling(latex_options = "hold_position")
+```
+
+Notice how in the above we have saved the summaries in a new tibble called
+`light_summary`. This was useful when we wanted to use this later multiple
+times, as we have here to demonstrate different ways to format the output.
+
+Explanation of these summary statistics:
+
+-   The sample mean is the average of all of the measurements.
+
+-   The sample median is a value for which half of the `Speed` values are
+    larger and half of the `Speed` values are lower. Both the mean and the
+    median are a measure of a "central" or "average" value of a distribution.
+    In statistical jargon, we often refer to this concept as the *location* of
+    the distribution.
+
+-   The sample standard deviation (SD) is the square root of the sample
+    variance, and is a measure of how "spread out" the values are. In
+    statistical jargon, we refer to the concept of the "spread" of a
+    distribution data as its *dispersion*. This can be quantified in different
+    ways. One benefit of the standard deviation is that it is in the same units
+    as the original observations.
+
+-   The sample interquartile range (IQR) is another measure of dispersion, and
+    is in the units of the original data. It represents the spread of the
+    middle 50% of the data.
+
+For these data, the mean of the sample is a bit larger than the speed of light
+value from Wikipedia. The SD is small relative to the mean, and the IQR is also
+small. This suggests that the data are not too spread out. The median is also
+very close to the mean, so the data do not seem overly skewed.
+
+## Estimation
+
+Let's use these data to estimate $\mu$.
+
+We already have a point estimate from above; using the sample mean we have
+$\hat\mu = 852$.
+
+To explicitly show the uncertainty of this estimate, it is better to calculate
+and report a confidence interval. Let's do that, using the `t.test()` command
+as we saw in the lectures:
+
+```{r}
+t.test(x = morley$Speed)$conf.int
+```
+
+Our 95% confidence interval for $\mu$ is (837, 868).
+
+How does this estimate compare to the value from Wikipedia?
+
+Notice that the confidence interval is substantially different to $\mu_W$,
+which was about 792. Therefore, it is implausible that $\mu$ (the value that
+the experiments are centered around) is the same as $\mu_W$. Michaelson's
+experiments were generating values on average that were systematically higher
+than the true speed of light.
+
+The fact that $\mu$ and $\mu_W$ clearly differ probably reflects some
+combination of weaknesses in the design of the experiment or the equipment that
+was available at the time, possible errors in the way the experiment was
+conducted, or errors in how the data were measured and processed.
+
+***Exercises 3--6***
+
+3.  Calculate the 95% confidence interval without using `t.test()`.
+
+4.  Which of the following quantities are parameters and which are statistics?
+
+    -   $\mu$
+    -   $\mu_W$
+    -   $\hat\mu$
+
+5.  If we were to repeat Michaelson's experiments to get another 100
+    observations and used these to calculate a new 95% confidence interval,
+    what is the probability that it would contain $\mu$? What about $\mu_W$?
+
+6.  For the confidence interval you calculated above, what is the probability
+    that it contains $\mu$?
+
+# Cognitive behavioural therapy: Does the treatment have an effect?
+
+Cognitive behavioural therapy (CBT) is a psychological treatment technique that
+aims to help a person change their thoughts (cognition) and their behavioural
+patterns. By learning to replace negative thoughts with more positive ones, and
+to correspondingly modify negative behaviours with the aim of improving
+feelings of anxiety and/or depression.
+
+Although CBT has been one of the most important treatments for anxiety and
+depression over many decades now, new methods for delivering the CBT treatment
+are regularly sought to try to improve the effectiveness of the general
+technique.
+
+A recent study was undertaken to assess such a new CBT delivery method. In
+total, 60 people were recruited to voluntarily participate in the study, all
+participants having had a recent clinically confirmed episode of anxiety or
+depression, or both.
+
+Each study participant was asked to complete a certain psychological assessment
+on two occasions, once before the new CBT delivery treatment method was
+applied, and once at the end of the treatment. As higher scores on the
+assessment are associated with an increase in anxiety and depression, it is
+hoped that the individual scores will be reduced following the new CBT
+treatment, compared with the corresponding scores obtained at the start of the
+study.
+
+Each participant's scores on these two assessments are contained in the file
+`CBT.csv`. Each row of this file corresponds to one of the sixty (60) subjects
+who participated in the CBT delivery method experiment. Column 1 corresponds to
+the individual participant's case number (`case`), while the values stored in
+columns 2 and 3 of each row (`score1` and `score2`) relate to the assessment
+scores for the participant corresponding to the row case number, with `score1`
+the score of the assessment completed before the start of CBT treatment and
+`score2` the score of the assessment completed following the end of CBT
+treatment.
+
+In this example, we are interested in whether this CBT delivery method leads to
+a change in anxiety and depression. The simplest such change would be a
+difference in the scores measured in the study.
+
+Let $\mu_1$ be the population average assessment score before the treatment,
+and $\mu_2$ be the score after the treatment. Let their difference be
+$\delta = \mu_2 - \mu_1$. We want to estimate $\delta$.
+
+Notice that we have paired data here. That means we will be able to take
+differences in the scores on a per-subject basis when estimating $\delta$.
+
+## Setting up
+
+Start by downloading the `CBT.csv` file and import it into R as tibble:
+
+```{r}
+CBT <- read_csv("data/CBT.csv")
+```
+
+## Data visualisation
+
+The following exercises will take you through producing two different
+visualisations of these data, positioned side-by-side. You might need to look
+up information on some of the necessary R functions if they are unfamiliar to
+you.
+
+***Exercises 7--9***
+
+7.  To begin with, add a new column to `CBT` that calculates the difference
+    between the two scores for each subject. Specifically, call the new column
+    `Diff` and define it as `score2` minus `score1`. (Hint: use the `mutate()`
+    function.)
+
+8.  For the first plot, we want an estimated density plot of these differences,
+    similar in style to the plot we made for the speed of light data in the
+    previous section. Create such a plot, saving it to an object called
+    `p2density`. Include a vertical red line showing the sample mean (of
+    `Diff`) and a vertical black line at zero.
+
+9.  For the second plot, we want to display the distributions of the two scores
+    side-by-side. To do that easily in the tidyverse, it will help if we first
+    restructure the tibble so the scores are all in a single column; this is
+    known as a "long" format (in contrast to a "wide" format, where such values
+    are in separate columns). The `pivot_longer()` function can do this for us,
+    as follows:
+
+    ```{r}
+    CBT_longer <- CBT |>
+        pivot_longer(cols = 2:3, names_to = "assess", values_to = "score")
+    ```
+
+    This gives us a new tibble, with the scores together in a single column
+    called `score`, and a new column called `assess` that specifies the type of
+    each score (either `score1` or `score2`). Using this new tibble, create
+    side-by-side violin plots to compare the distribution of the two scores.
+    (Hint: use the `geom_violin()` function as part of your plotting commands.)
+    Save your plot into an object called `p2violin`.
+
+Once you have completed the above exercises, you can display these plots
+side-by-side with the following command:
+
+```{r}
+#| eval: false
+grid.arrange(p2density, p2violin, ncol = 2)
+```
+
+Note that the above code won't run by default due to the `eval: false` option.
+Once you are ready to try it (when you have completed the above exercises),
+delete that line of code (or change `eval: false` to `eval: true`) and run the
+code chunk. It should give you a picture similar to the following:
+
+![](week03-CBT-image.png)
+
+## Further analyses and estimation
+
+***Exercises 10--12***
+
+10. Produce a summary tibble, based on all 60 observations of `Diff`, that
+    displays the number of observations $n$, and the sample mean, median,
+    standard deviation and interquartile range.
+
+11. Calculate a 95% confidence interval for `Diff`.
+
+12. What insights can you draw your plots and data analyses?
+
+# Birth weight
+
+Load the `birthwt` data from the `MASS` package into your R session (install
+the package if you do not have it).
+
+```{r}
+library(MASS)
+data(birthwt)
+```
+
+Take a look at these data and review the R help page for them. For today we
+will focus only on the variables named `bwt` and `smoke`.
+
+***Exercises 13--16***
+
+13. Briefly explain what these two variables represent.
+
+14. Produce at least one appropriate visualisation of the `bwt` variable, in
+    relation to the smoking status of the mother during pregnancy. You are not
+    required to produce exactly the same type of plots as above, rather produce
+    what you think is of interest. (Have a go on your own to begin with. After
+    that, have a look at [Section 6.4 of the R Graphics
+    Cookbook](https://r-graphics.org/RECIPE-DISTRIBUTION-MULTI-DENSITY.html)
+    for some more ideas.)
+
+15. Are the two groups independent samples? Explain why or why not.
+
+16. Produce a summary tibble that displays the number of observations where the
+    mother smoked (call it `n1`), and the sample mean birth weight of babies
+    born to these mothers (call it `mean1`), along with the corresponding
+    standard deviation (call it `SD1`). Display these in a table. Repeat this
+    for the birth weights of babies born to mothers who did not smoke (with
+    similar variable names but with a "0" instead of a "1"). Hint: you might
+    like to use the `filter()` function.
+
+## Comparison of means
+
+Let $\mu_1$ and $\mu_0$ be respectively the population mean birth weights of
+babies whose mothers smoke, or do not smoke, during pregnancy. Let their
+difference be $\delta = \mu_1 - \mu_0$.
+
+***Exercises 17--18***
+
+17. Calculate an approximate 95% confidence interval for $\delta$.
+
+18. Interpret the output in the context of the setting.
+
+# A note on significant figures
+
+In any final reports, we should only represent our data with enough significant
+figures as is warranted by the precision of those data. Using any more than
+this is misleading, and is referred to as *false precision* or *spurious
+precision*.
+
+For example, if we measure the width of a phone with a ruler that has tick
+marks at every millimeter (mm), then we should only report our measurement to
+the nearest mm. If we said that the phone was 4.3671 mm wide, no one should
+believe the last few digits.
+
+Similarly, when we report any statistics, we should be mindful that they also
+have an inherent precision. Remember that all statistics have a sampling
+distribution, and we can think of the variation in that distribution as being
+how precise we can "measure" that statistic. We can estimate this precision by
+calculating the standard error for that statistic; typically we do this when we
+are using the statistic as an estimator.
+
+Therefore, when we report statistics, we should take care to not overstate the
+precision. For example, suppose we are estimating $\theta$ and for a given
+sample we get $\hat\theta = 12.107348$ and $\mathrm{se}(\hat\theta) = 3.11203$.
+Is that how we should write it? Is anyone really going to believe that the
+third decimal place in $\theta$ is 7, given these data? Given the standard
+error, it's quite plausible that the true value is not even close to 12, let
+alone worrying about the smaller decimal places. For this reason, it is good
+practice to round these values to many fewer digits when we display them in any
+final reports. In this case, we could write $\hat\theta = 12.1$ and
+$\mathrm{se}(\hat\theta) = 3.1$.
+
+You probably already do this type of simplification naturally in many
+commonplace contexts. For example, would you say that the number of people in
+the world is 8.2381 billion? More likely you would say "around 8.2 billion",
+reflecting the fact that no one has actually counted this precisely.
+
+All of this only applies when we are reporting or communicating the **final
+results**. If are storing or reporting any intermediate values that need to be
+fed into further calculations, then we should retain as much precision as
+possible to avoid accumulating rounding errors.
+
+You can read more at:\
+<https://en.wikipedia.org/wiki/False_precision>\
+<https://en.wikipedia.org/wiki/Significant_figures>
+
+# Exploring sampling distributions via simulation
+
+Finally, we end with some exercises where we use simulation to explore the
+sampling distribution of different estimators, to understand and compare their
+performance.
+
+## Continuous example
+
+Consider a normal distribution, $\mathrm{N}(\mu, \sigma^2)$, which has mean
+$\mu$ and variance $\sigma^2$.
+
+Suppose this describes a population from which we can obtain a random sample of
+size 100.
+
+We are interested in estimating the population mean $\mu$. Lachlan suggests
+using the sample mean $\bar{X}$ to do this estimation. Damjan suggests using
+the sample median $M$.
+
+***Exercises 19--20***
+
+19. Explain intuitively why each of the two estimators should give a sensible
+    estimate of $\mu$.
+
+20. Which estimator is better? Use simulations to explore this and justify your
+    answer. Show your simulation results for the case where $\mu = 3$ and
+    $\sigma = 1$.
+
+## Discrete example
+
+Consider the following probability distribution:
+
+| $x$ | $\Pr(X = x)$  |
+|-----|---------------|
+| 0   | $1 - \theta$  |
+| 1   | $3\theta / 4$ |
+| 2   | $\theta / 4$  |
+
+This distribution has a single parameter, $\theta$, which is a number between 0
+and 1.
+
+Suppose this describes a population from which we can obtain a random sample of
+size 100.
+
+Let $\bar{X}$ be the sample mean, and $Y = \mathrm{freq}(0)$ be the number of
+observations in the sample that have a value of 0 (the 'frequency' of 0).
+
+Consider the following two estimators for the parameter $\theta$:
+
+-   $T_1 = (4 / 5) \, \bar{X}$
+-   $T_2 = 1 - Y / 100$
+
+***Exercises 21--23***
+
+21. Explain intuitively why each of the two estimators should give a sensible
+    estimate of $\theta$.\
+    (Hint: $T_1$ is based on the statistic $\bar{X}$. What properties do we
+    know about this statistic? Similarly, $T_2$ is based on $Y$; what do we
+    know about that statistic? In each case, we are making use of some
+    knowledge of the sampling distribution of the respective statistic.)
+
+22. Use simulations to show that both estimators seem to be unbiased, and
+    determine which one has smaller variance. For your simulations, consider
+    the case where $\theta = 0.7$.
+
+23. (Challenge question, for the mathematically inclined) Prove mathematically
+    that both estimators are unbiased and derive expressions for their
+    variance.

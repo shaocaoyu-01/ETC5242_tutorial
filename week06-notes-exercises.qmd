@@ -1,0 +1,383 @@
+---
+title: "Week 6, Notes & Exercises"
+subtitle: "Statistical Thinking (ETC2420 / ETC5242)"
+date-format: "[Semester 2,] YYYY"
+date: "2025"
+toc: true
+format:
+  html:
+    embed-resources: true
+---
+
+```{r}
+#| label: setup
+#| message: false
+library(tidyverse)
+library(broom)
+library(gridExtra)
+library(MASS)
+```
+
+In this tutorial we will use maximum likelihood to estimate parameters for
+various models, using simulated and real data. To quantify uncertainty, we
+obtain both the CLT- and bootstrap-based confidence intervals.
+
+# Normal distribution
+
+## Generate the data
+
+First, set the seed and then simulate a random sample of size $n = 36$ from
+$\mathrm{N}(\mu = 10, \sigma^2 = 4)$.
+
+```{r}
+set.seed(24205242)
+x_norm <- rnorm(n = 36, mean = 10, sd = 2)
+```
+
+Let's visualise the sample using the `dataplot()` function we wrote in the Week
+5 tutorial. Suppose we saved the code for that function in a new file called
+`dataplot.R`. We could then easily use it here as follows:
+
+```{r}
+source("dataplot.R")
+dataplot(x_norm, bins = 30) +
+  ggtitle("Histogram of simulated sample from N(10, 4)") +
+  xlab("Observations (simulated)")
+```
+
+Notice the use of the `source()` function to load the code for the `dataplot()`
+function. This is a quick and convenient way to re-use existing code without
+needing to make multiple copies.
+
+An alternative would be to copy and paste the code into the current document. A
+downside of that approach is that if you notice an error in the code, then you
+have to find all the places where you used it and fix it in each one. With the
+`source()` approach, we only have a single copy of that code and so only need
+to fix it once.
+
+***Exercise 1***
+
+1.  Create the file `dataplot.R` and put the definition of the `dataplot()`
+    function inside it.
+
+## Point estimates
+
+Use the `fitdistr()` function (from the `MASS` package) to estimate the
+parameters assuming a normal distribution.
+
+```{r}
+normal_fit <- fitdistr(x_norm, "normal")
+normal_fit |> tidy()
+```
+
+Note that we are pretending we don't know the true parameter values, as if we
+had collected these data and want to fit a normal distribution. This means
+estimating the values of the parameters, $\mu$ and $\sigma$. Therefore there
+are 2 parameters, so $$\theta =
+\begin{pmatrix}      \mu  \\      \sigma  \end{pmatrix}, \quad
+\hat{\theta}_\text{MLE} =
+\begin{pmatrix} \hat{\mu} \\ \hat{\sigma} \end{pmatrix}.$$
+
+The `fitdistr()` function can fit various probability distributions, estimating
+their parameters using the maximum likelihood method using input data.
+
+Have a look at the `fitdistr()` help page to find out more. Which models can it
+fit? What does the output look like?
+
+Let's explore the `normal_fit` object produced above. Look at what follows from
+each of the print statements below. What does each represent? What is the
+fitted population distribution?
+
+```{r}
+normal_fit$estimate
+normal_fit$sd
+normal_fit$vcov
+normal_fit$loglik
+normal_fit$n
+```
+
+We can see that that `normal_fit` is an object of class `fitdistr` which is a
+list with 5 components:
+
+-   `estimate` contains the MLEs of the parameters, ($\hat{\mu}, \hat{\sigma}$)
+-   `sd` contains the standard errors (estimated standard deviations) of the
+    parameter estimates
+-   `vcov` contains the estimated variance-covariance matrix[^1] of the MLE
+-   `loglik` contains the log-likelihood function evaluated at the MLE
+    estimates
+-   `n` contains the number of observations used in the fit.
+
+[^1]: This is the equivalent quantity to a variance but for a multivariate
+    probability distribution. The entries along the diagonal of this matrix are
+    the estimated variances of the estimator for each parameter. The
+    off-diagonal elements are estimated covariances. We won't work directly
+    with these quantities in this unit, but it is helpful to know what they
+    are.
+
+When we estimate with `fitdistr()`, it returns point estimates as well as
+standard errors. That allows us to get CLT-based confidence intervals for all
+parameters, using the asymptotic distribution of MLEs.
+
+Notice that this means we can now get a CLT-based CI for $\sigma$, whereas
+previously we only knew how to do it for $\mu$.
+
+## Confidence intervals
+
+We now calculate 95% confidence intervals for the parameters using both the CLT
+and the bootstrap.
+
+***Exercises 2--4***
+
+2.  Use the output from `fitdistr()`, along with appropriate quantiles from a
+    normal distribution, to calculate approximate 95% confidence intervals for
+    $\mu$ and $\sigma$. Use the fact that we know the MLE is asymptotically
+    normally distributed.
+
+3.  Use the bootstrap to calculate a 95% confidence interval for each
+    parameter. Use $B = 5000$ bootstrap samples.
+
+    Some code to get you started is below, but you'll need to change every
+    instance of "`AAA`" with some suitable R code. Note that because we have
+    two parameters to estimate, from each sample we need to store two values
+    rather than just one. To do that, we need to use a matrix rather than a
+    vector.
+
+```{r}
+#| eval: false
+# Initialise values for doing the bootstrap.
+B <- AAA
+normal_boot <- matrix(nrow = B, ncol = AAA)
+
+# Generate the bootstrap samples and calculate statistics.
+for(b in 1:B) {
+  AAA <- sample(AAA)
+  normal_boot[b,] <- AAA
+}
+
+# Calculate CIs.
+normal_boot_ci_mu    <- quantile(AAA, c(0.025, 0.975))
+normal_boot_ci_sigma <- quantile(AAA, c(0.025, 0.975))
+
+# Look at the values.
+normal_boot_ci_mu
+normal_boot_ci_sigma
+```
+
+For the CI calculation, notice that we calculate the lower and upper bounds at
+the same time. However, we need to do it separately for each parameter, by
+taking the appropriate column from the `normal_boot` matrix.
+
+4.  Visualise the approximate sampling distributions, as given by the bootstrap
+    samples, and include vertical lines to show the bounds of the 95%
+    confidence intervals. (This is similar to what we did in Week 5.)
+
+# Beta distribution
+
+Repeat the work from the previous section, but now simulate a random sample of
+size $n = 100$ from $\mathrm{Beta}(\alpha = 2, \beta = 4)$.
+
+***Exercises 5--10***
+
+5.  Simulate the data. Remember to set a seed to make it reproducible.
+
+6.  Visualise the sample using an appropriate plot.
+
+7.  Calculate MLEs and standard errors for the parameters, $\alpha$ and
+    $\beta$.
+
+    You might encounter an error when using `fitdistr()` if you merely copy
+    what we did for the normal distribution above.
+
+    The `fitdistr()` function requires the user to specify starting points for
+    the optimisation algorithm (for maximising the log-likelihood) when working
+    with the beta distribution. We suggest initialising the algorithm with
+    $\alpha = 1$ and $\beta = 1$, although other positive values of $\alpha$
+    and $\beta$ should work fine.
+
+    Have a look at the help page for `fitdistr()` to find out how to specify
+    these values.
+
+8.  Calculate a CLT-based 95% confidence interval for each parameter.
+
+9.  Use the bootstrap method to calculate 95% confidence intervals for the
+    parameters.
+
+10. Visualise the approximate sampling distributions, as given by the bootstrap
+    samples, and include vertical lines to show the bounds of the 95%
+    confidence intervals.
+
+# Poisson distribution
+
+Repeat the work from the previous section, but now simulate a random sample of
+size $n = 75$ from $\mathrm{Poisson}(\lambda = 5)$.
+
+***Exercises 11--16***
+
+11. Simulate the data. Remember to set a seed to make it reproducible.
+
+12. Visualise the sample using an appropriate plot.
+
+13. Calculate the MLE and standard error of $\lambda$.
+
+14. Calculate a CLT-based 95% confidence interval for $\lambda$.
+
+15. Use the bootstrap method to calculate a 95% confidence interval for
+    $\lambda$.
+
+16. Visualise the approximate sampling distribution, as given by the bootstrap
+    samples, and include vertical lines to show the bounds of the 95%
+    confidence interval.
+
+# CBT data
+
+Load the CBT data and calculate the pairwise score differences.
+
+```{r}
+#| message: false
+CBT <- read_csv("data/CBT.csv")
+x_diff <- CBT$score2 - CBT$score1
+```
+
+## Estimating parameters
+
+***Exercises 17--22***
+
+17. Visualise the pairwise score differences with an appropriate plot.
+
+18. What would be an appropriate distribution to fit to the score differences?
+
+19. Using the distribution you chose above, fit it to the data using
+    `fitdistr()`.
+
+20. Calculate 95% confidence intervals for the parameters of the distribution
+    you chose. Use both a CLT- and a bootstrap-based approach.
+
+21. Visualise the approximate sampling distributions, as given by the bootstrap
+    samples, and include vertical lines to show the bounds of the 95%
+    confidence intervals.
+
+22. We will now compare these estimates with those from the Week 5 tutorial.
+    Are the inference results based on the MLE similar to the results from Week
+    5? If any are different, can you explain why?
+
+    (Before doing this exercise, we need to get MLEs using a normal
+    distribution. If in the previous exercises you chose a distribution other
+    than a normal distribution, then repeat them using a normal distribution.)
+
+## Evaluating the model fit
+
+We can use a QQ plot to assess whether a normal distribution is an adequate
+model for the score differences.
+
+We plot the data ("sample quantiles") against the theoretical quantiles from a
+normal distribution. If most of the points are close to a straight line, then
+we can be satisfied that a normal distribution is a satisfactory model.
+
+```{r}
+params_norm <- fitdistr(x_diff, "normal")$estimate
+ggplot(tibble(x = x_diff)) +
+  aes(sample = x) +
+  stat_qq(distribution = qnorm, dparams = params_norm) +
+  stat_qq_line(distribution = qnorm, dparams = params_norm) +
+  theme_bw() +
+  xlab("Theoretical quantiles (normal distribution)") +
+  ylab("Sample (CBT score difference)")
+```
+
+***Exercises 23--25***
+
+23. What can you conclude from the QQ plot?
+
+24. Create another QQ plot, this time for assessing whether a t-distribution is
+    an adequate model.
+
+    Note: when you use `fitdistr()` for a t-distribution, it fits a 3-parameter
+    version of this model. You only need to use the estimate of the `df`
+    parameter when you create the QQ plot.
+
+25. Do you think the t-distribution fits the data better?
+
+## Confidence bands for QQ plots
+
+The QQ plots above show a single set of points, based on the sample. It can
+sometimes be hard to judge whether the points are 'close enough' to the
+reference line to believe the model is adequate, or whether they 'deviate
+enough' to cast doubt on the assumed model.
+
+This problem is similar to only relying on a point estimate and not having any
+sense of the underlying uncertainty in the estimate. We can improve our QQ
+plots by adding a 'confidence band' to visualise the uncertainty. (A confidence
+band is like an 'error bar', but for a whole line rather than a single point.)
+
+We will use the [qqplotr](https://cran.r-project.org/package=qqplotr) package
+to plot QQ plots with confidence bands. If you don't have this package
+installed, you can install it as usual with the following command:
+
+```{r}
+#| eval: false
+install.packages("qqplotr")
+```
+
+Then load it:
+
+```{r}
+library(qqplotr)
+```
+
+The package's [website](https://aloy.github.io/qqplotr/) and
+[vignette](https://aloy.github.io/qqplotr/articles/introduction.html) show how
+to use the package, but here's a brief example:
+
+```{r}
+ggplot(tibble(x = x_diff)) +
+  aes(sample = x) +
+  stat_qq_band(distribution = "norm", dparams = params_norm) +
+  stat_qq_line(distribution = "norm", dparams = params_norm) +
+  stat_qq_point(distribution = "norm", dparams = params_norm) +
+  theme_bw() +
+  xlab("Theoretical quantiles (normal distribution)") +
+  ylab("Sample (CBT score difference)")
+```
+
+The package provides a new `stat_qq_band()` function (which draws the
+confidence band), as well as its own `stat_qq_line()` and `stat_qq_point()`
+functions (to draw the other elements of the QQ plot).
+
+The package has several options for how to calculate the confidence band. The
+details are somewhat advanced and we won't cover them in this unit. Also we
+will just use the default settings.
+
+The key aspects that you need to know are the following:
+
+-   The confidence band shows the region where we expect most of the points to
+    lie if the assumed model is indeed correct. It is centered on the reference
+    line and 'flares out' away from the line in both directions. The region is
+    wider on either end of the plot and narrower in the middle, which reflects
+    the fact that the more extreme quantiles are 'noisier' and thus have
+    greater uncertainty.
+
+-   We don't necessarily expect **all** of the points to lie inside the band.
+    Some might stray outside by chance, even if the assumed model is true. The
+    more points there are, the more likely that a few of them will be outside
+    by chance.
+
+The confidence band gives us an easier way to judge whether the points are
+close enough to the reference line. If the points lie completely within the
+confidence band, then the assumed model is probably adequate for these data.
+Otherwise, the more that the points deviate out of the band, the stronger the
+evidence against the assumed model.
+
+One difference compared to the standard `ggplot2` commands is how to specify
+the assumed distribution using the `distribution` argument. When we use the
+standard `ggplot2` commands, we pass a **function** that defines the inverse
+cdf (`distribution = qnorm`). When using the `qqplotr` commands, we instead
+pass the **name** of the set of functions without the usual d/p/q/r prefix
+(`distribution = "norm"`). The reason for this different convention is that
+`qqplotr` needs to access to the whole family of probability functions, not
+just the inverse cdf.
+
+***Exercises 26--27***
+
+26. What can you conclude from the above plot?
+
+27. Repeat this for the t-distribution.

@@ -1,0 +1,309 @@
+---
+title: "Week 4, Notes & Exercises"
+subtitle: "Statistical Thinking (ETC2420 / ETC5242)"
+date-format: "[Semester 2,] YYYY"
+date: "2025"
+toc: true
+format:
+  html:
+    embed-resources: true
+---
+
+```{r}
+#| label: setup
+#| include: false
+#| warning: false
+#| error: false
+#| message: false
+knitr::opts_chunk$set(message = FALSE,
+                      echo    = TRUE,
+                      eval    = TRUE,
+                      fig.height = 3,
+                      fig.width  = 7)
+```
+
+```{r}
+#| eval: true
+#| echo: false
+#| warning: false
+#| message: false
+library(tidyverse)
+library(kableExtra)
+library(broom)
+library(ggthemes)
+theme_set(theme_minimal(base_size = 12))
+```
+
+# Gender discrimination study
+
+Consider the case study example discussed in the lecture. The research question
+we hope to answer is, "Are females discriminated against in promotion decisions
+made by male managers?"
+
+The participants in this study were 48 male bank supervisors attending a
+management institute at the University of North Carolina in 1972. They were
+asked to assume the role of the personnel director of a bank and were given a
+job applicant resume to judge whether the applicant should be promoted to a
+branch manager position. The files given to the participants were identical,
+except that half of them indicated the job candidate was male and the other
+half indicated the job candidate was female. These files were randomly assigned
+to the supervisors to make their judgement.
+
+The *gender* (male or female) associated with the assigned file and the
+resulting promotion *decision* (to promote or not promote) was recorded. Using
+the results of the study, we would like to evaluate if females are unfairly
+discriminated against in promotion decisions.
+
+We are interested in testing the upper one-sided hypothesis test:
+$$H_0\colon p_{M} - p_{F} = 0 \quad \text{versus} \quad
+  H_1\colon p_{M} - p_{F} > 0,$$ where ${p}_{M}$ and ${p}_{F}$ denote the
+population proportions of male and female job applicants promoted,
+respectively.
+
+In this tutorial we will do two approximate versions of the test, using a
+CLT-based test and a permutation test based on permutations of the original
+data.
+
+## Data wrangling
+
+***Exercises 1--7***
+
+1.  Create a tibble named `GDS` (abbreviation for "Gender discrimination
+    study") that records the data from this study, with one row for each study
+    participant. That means you should have 48 rows in total.
+
+2.  Write code that will take `GDS` and count how many of each combination of
+    *gender* and *decision* were observed in the study. The output should be a
+    tibble that has one row for each such combination, and a column to show the
+    count for each one. (Hint: use the functions `group_by()` and `tally()`.)
+
+3.  Write code that will restructure this into a $2 \times 2$ table. (Hint: use
+    the `pivot_wider()` function.)
+
+4.  Write further code that will create output that is similar to the following
+    table. Save your tibble into a variable called `GDSS4`, which we will use
+    again later on. (Hint: use the `mutate()` and `select()` functions. When
+    you do so, you can use backticks to quote the value `not promoted` to
+    ensure it is treated as a single value when passed as an argument to those
+    functions.)
+
+```{r}
+#| echo: false
+
+# This code chunk is simply to show you an example of the desired output.
+# You need to write code that will generate the same output, but by starting
+# with the tibbles from  earlier exercises and manipulating them with
+# appropriate R commands.
+
+example_table <- tibble(gender         = c("male", "female"),
+                        promoted       = c(21, 14),
+                        "not promoted" = c(3, 10),
+                        total          = c(24, 24),
+                        prop           = c(0.875, 0.583))
+example_table |>
+  kable() |>
+  kable_styling(latex_options = "hold_position")
+```
+
+5.  Using the output from Exercise 3 (see above), write code that will turn it
+    back into "long" format, so it matches the output from Exercise 2. (Hint:
+    use the `pivot_longer()` function.)
+
+6.  What does the table from Exercise 4 (see above) tell us? Compare the
+    proportions of men and women who were promoted, and calculate the
+    difference. Does it match our expectations?
+
+7.  Is this evidence of discrimination?
+
+## Visualise the data
+
+Another way to present the results would be using a plot. Since the data are
+categorical, we can use a bar plot. The code chunk below produces a single plot
+comprised of two bar plots, each showing the counts of the `decision` variable
+for each gender, positioned side-by-side. (Before you can run it, you need to
+complete Exercise 1, in which you create the tibble `GDS`.)
+
+```{r}
+#| eval: false
+ggplot(GDS, aes(x = decision, fill = decision)) +
+  geom_bar() +
+  facet_wrap(~ factor(gender), nrow = 1)
+```
+
+Notice the following:
+
+-   The `geom_barplot()` function provides a summary of the tidy `GDS` tibble
+    (i.e., it used the individual-level data, rather than a summarised version
+    where the counts were already provided).
+
+-   By using `facet_wrap(~ factor(gender))`, the two bar plots share the same
+    vertical (y-)axis, and we automatically get titles for each panel, which
+    correspond to the different values of the `gender` variable.
+
+-   See also `facet_grid()`, as an alternative to `facet_wrap()`.
+
+***Exercise 8***
+
+8.  What happens if the `facet_wrap()` function is removed from the code chunk
+    shown above? Which plot do you think highlights the different proportions
+    best? Is the plot now evidence for discrimination?
+
+## Comparison of proportions
+
+Let the difference between the proportions of interest be $d = p_{M} - p_{F}$.
+
+Let the estimators of these parameters be the natural sample equivalents. That
+is, let $\hat{p}_{M}$ and $\hat{p}_{F}$ be the sample proportions of male and
+female job applicants promoted, respectively, and let $\hat{d} = \hat{p}_{M} -
+\hat{p}_{F}$.
+
+***Exercise 9***
+
+9.  Let `GDSS4` be the tibble that formed the basis for the output of Exercise
+    4 (see above). The code chunk below provides three different ways of
+    computing $\hat{d}$ from this tibble. While each one provides the same
+    numerical value, which expression do you think should be preferred, and
+    why?
+
+```{r}
+#| eval: false
+d.hat <- GDSS4$prop[1] - GDSS4$prop[2]
+d.hat <- GDSS4$prop[GDSS4$gender == "male"] - GDSS4$prop[GDSS4$gender == "female"]
+d.hat <- (GDSS4 |> pull(prop))[1] - (GDSS4 |> pull(prop))[2]
+```
+
+# How do we test for discrimination?
+
+We wish to test if the sample supports the hypothesis that the difference in
+proportions is 0 versus it being greater than 0. We will use the observed
+difference in proportions ($\hat{d}$) as the test statistic. To do so, we need
+a way to calculate and work with the sampling distribution of $\hat{d}$. We
+explore two choices: a CLT-based approach and a permutation approach.
+
+## The CLT-based test
+
+Here we use the function `prop.test()` to do the relevant traditional CLT-based
+test.
+
+This function is not part of the tidyverse and needs a simpler format for the
+input (it takes vectors or matrices, rather than tibbles). See the code below.
+
+Note that the default for `prop.test()` is to do a two-sided test. Since we
+want a one-sided test, we need to specify the `alternative` argument to tell it
+which one-sided alternative hypothesis we want.
+
+```{r}
+#| eval: false
+GDSS4 |>
+  select(promoted, `not promoted`) |>
+  as.matrix() |>
+  prop.test(alternative = "greater")
+```
+
+***Exercise 10***
+
+10. Report the conclusion of the hypothesis test on the basis of the above
+    output, and comment on the strength of evidence against $H_0$.
+
+## The permutation test
+
+The calculations to implement the permutation test in this setting are shown in
+the code chunk below (with some missing parts that you need to fill in, see the
+exercises).
+
+We want to "break" the association between `promoted` and `gender` by permuting
+(shuffling) one of the columns. Read through the code below carefully.
+
+The `sample()` function does the shuffling, and the loop does this many ($B$)
+times. Each of these $B$ shuffles is a hypothetical version of the data
+assuming that $H_0$ were true. Therefore, we get $B$ simulated values from the
+sampling distribution of $\hat{d}$ if $H_0$ were true (we often refer to this
+simply as the *null distribution* of $\hat{d}$).
+
+To visualise the approximate null distribution of $\hat{d}$, we can plot a
+histogram of the B simulated values.
+
+We can also use the simulated values to calculate approximate p-values, by
+counting what proportion of the simulated values are as or more extreme than a
+given observed value of $\hat{d}$.
+
+```{r}
+#| eval: false
+
+# Set the number of replications for test.
+B <- 1000
+
+# Set up an empty vector of length B, to be used to store the
+# replicated "d.hat" values after shuffling.
+Bdhat <- numeric(B)
+
+# Initialise permutation sample with the original data.
+# We will update this inside the loop with each permutation.
+RGDS <- GDS
+
+# ...comment left blank, see the exercise below...
+set.seed(2025)
+
+# Use for-loop to generate B replications of the test statistic.
+# All commands inside the curly braces are repeated B times,
+# with the variable r taking values in the sequence 1:B in turn.
+for (r in 1:B) {
+
+  # For iteration r, shuffle the gender variable in the data file.
+  RGDS <- RGDS |> mutate(gender = sample(RGDS$gender))
+  
+  # Calculate the summary table for the shuffled tibble, in the
+  # same way as for Exercises 2 to 4.
+  RGDSS3 <- RGDS |>
+    ((...add your code here...))
+
+  # Calculate the "d.hat" for the shuffled data, and
+  # save it as the r-th element of the Bdhat vector.
+  Bdhat[r] <- ((...add your code here...))
+
+  # Close the for-loop with a curly brace.
+}
+
+# Proportion of Bdhat at least as big as d.hat.
+# This is the approximate p-value.
+pval <- sum(Bdhat >= d.hat) / B
+```
+
+***Exercises 11--13***
+
+11. Write the missing R code.
+
+12. What does the `set.seed(2025)` command do? Why is it included in the code
+    for the permutation test?
+
+13. Set $B = 5000$ and re-run the code (it will take longer to run). Does the
+    answer change?
+
+## Visualise the sampling distribution and the p-value
+
+Since we simulated values from the sampling distribution, we can plot them.
+Consider the following code chunk and resulting plot.
+
+```{r}
+#| eval: false
+Bdhat |>
+  as_tibble() |>
+  mutate(r = 1:B) |>
+  ggplot(aes(value)) +
+  geom_histogram(fill = "blue", alpha = 0.7) +
+  xlab(expression(hat(d)^"[r]")) + 
+  ggtitle(expression(paste("Approximate null distribution of ",
+                           hat(d) == hat(p)[M] - hat(p)[F])))
+```
+
+***Exercises 14--17***
+
+14. Modify the above plot to add a vertical line at the observed value of
+    $\hat{d}$.
+
+15. What does this plot represent?
+
+16. Report the p-value.
+
+17. Would you say that we have proved that the managers discriminate against
+    women?

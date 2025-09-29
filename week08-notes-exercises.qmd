@@ -1,0 +1,216 @@
+---
+title: "Week 8, Notes & Exercises"
+subtitle: "Statistical Thinking (ETC2420 / ETC5242)"
+date-format: "[Semester 2,] YYYY"
+date: "2025"
+toc: true
+format:
+  html:
+    embed-resources: true
+---
+
+```{r}
+#| label: setup
+#| include: false
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+```
+
+This week we continue learning about Bayesian inference. In the first part, we
+build upon the Bernoulli trials scenario tackled at the end of last week. In
+the second part, we look a simple 'A/B testing' example that mimics a common
+scenario used in marketing analytics.
+
+# Credibility factors for Bernoulli trials
+
+The exercises in this section use the same model as in the **Working with
+Bernoulli trials** section from last week's notes (Week 7).
+
+We have $n$ Bernoulli trials, each taking one of two possible outcomes:
+'success' or 'failure'. The data can be summarised by a single number $X$ which
+is the number of successes. Therefore, $X \mid \theta
+\sim \textrm{Binomial}(n, \theta)$, where $\theta$ is the probability of a
+success on any given trial. For inferring $\theta$, we use a
+$\mathrm{Beta}(\alpha, \beta)$ prior.
+
+Let $z$ be the *credibility factor* for estimating $\theta$ by the posterior
+mean, and $\hat\theta$ be the MLE for $\theta$. We have the following relation:
+$$\mathbb{E}(\theta \mid x) =    z  \times \hat\theta +
+                              (1-z) \times \mathbb{E}(\theta).$$
+
+***Exercises 1--3***
+
+1.  For each term in the above relation, express it only in terms of statistics
+    and hyper-parameters.
+
+2.  Take the `beta_binomial()` function you wrote last week and extend it to
+    also output the credibility factor $z$.
+
+3.  Verify the above relation for the case where we observe 12 successes out of
+    40 trials and use a uniform prior. Use the `beta_binomial()` function you
+    have just written above, together with the `beta_meanvar()` function you
+    wrote last week.
+
+# A/B testing
+
+What is A/B testing?
+
+Here's a brief description from the [Wikipedia
+article](https://en.wikipedia.org/w/index.php?title=A/B_testing&oldid=1308290929):
+
+> **A/B testing** (also known as **bucket testing**, **split-run testing** or
+> **split testing**) is a user-experience research method. A/B tests consist of
+> a randomized experiment that usually involves two variants (A and B),
+> although the concept can be also extended to multiple variants of the same
+> variable. It includes application of statistical hypothesis testing or
+> "two-sample hypothesis testing" as used in the field of statistics. A/B
+> testing is employed to compare multiple versions of a single variable, for
+> example by testing a subject's response to variant A against variant B, and
+> to determine which of the variants is more effective.
+
+## A promotional email campaign
+
+A/B testing is often used as part of email marketing. Consider an experiment
+involving emails sent to 2000 different people independently sampled from a
+very large customer database. All email messages contain a promotional offer to
+buy a certain product with a discount, and are **identical** except for one
+sentence:
+
+-   Message A: "Offer ends this Saturday!"
+-   Message B: "Offer ends soon!"
+
+Half of the emails sent ($n_A = 1000$) include message A and the other half of
+the emails ($n_B = 1000$) include message B. Those sent message A message
+belong to **group A** and the remaining who received message B belong to
+**group B**. There is no overlap between the two groups.
+
+We define the *conversion rate* as the proportion of people (out of a given
+group) who purchase a product. Let conversion rates for groups A and B be
+$\theta_A$ and $\theta_B$, respectively.
+
+We want to answer questions such as:
+
+-   Which of the two messages, A or B, is more effective?\
+    (In other words, which one results in a higher conversion rate?)
+
+-   How much more effective is one message compared to the other?\
+    (In other words, what is the distribution of the difference or ratio
+    between $\theta_A$ and $\theta_B$?)
+
+For some of the exercises given below, you will need to use the following
+fact:[^1]
+
+[^1]: This is a consequence of a more general result that is sometimes referred
+    to as the 'double expectation' formula or the 'law of total expectation'.
+    See the corresponding [Wikipedia
+    article](https://en.wikipedia.org/wiki/Law_of_total_expectation) if you
+    wish to find out more.
+
+> If $X \mid \theta \sim \textrm{Binomial}(n,\theta)$, where $n$ is fixed and
+> $\theta$ is random, then we can calculate the expected value of $X$ using
+> $\mathbb{E}[X] = \mathbb{E}_{(X, \theta)}[X] = \mathbb{E}_{\theta} \left[n
+> \theta\right] = n \mathbb{E}_{\theta} \left[\theta\right] = n
+> \mathbb{E}[\theta]$.
+
+The subscripts on the expectation operator, $\mathbb{E}$, refer to the random
+variables over which the expectation (of the expression inside the square
+brackets) is to be calculated. Note the similarity between the above result and
+the corresponding formula if $\theta$ is considered fixed:
+$\mathbb{E}[X] = n \theta$.
+
+## Setting the prior
+
+For analysing the data from this experiment, the company running the A/B test
+has a lot of experience using these email marketing strategies and is happy to
+use independent $\mathrm{Beta}(\alpha = 2,\beta = 26)$ prior distributions for
+the two conversions rates.
+
+***Exercises 4--6***
+
+4.  According to the prior distribution, what is the expected number of people
+    in group A who will take up their promotional offer?
+
+5.  Prior to seeing any data, calculate a 95% probability interval $(l, u)$ for
+    $n_A \theta_A$. In other words, we require some values $l$ and $u$ that
+    satisfy $\Pr(l \leqslant n_A \theta_A \leqslant u) = 0.95$. (This is
+    similar to a credible interval, but we are using the prior rather than the
+    posterior.)
+
+6.  According to the prior distributions for $\theta_A$ and $\theta_B$, and
+    given $n_A = n_B = 1000$, what is the difference between the expected
+    number of people from group A who will take up their promotional offer and
+    the expected number of people from group B who will take up their
+    promotional offer? Explain why.
+
+## The experimental data
+
+After running the A/B test, we observed that $x_A = 63$ customers purchased the
+product after viewing message A and $x_B = 45$ customers purchased the product
+after viewing message B.
+
+***Exercise 7***
+
+7.  Given the results of the experiment, what are the posterior distributions
+    for the conversion rates for groups A and B, respectively?
+
+## Comparing the conversion rates
+
+Let $\Delta = \theta_B - \theta_A$ denote the difference between the two
+conversion rates.
+
+Although we can work out the posterior mean and variance of $\Delta$ fairly
+easily, we do not know its full distribution. However, given what we know about
+the posterior distributions of $\theta_A$ and $\theta_B$, it is easy to obtain
+*draws* (realisations) from this distribution via simulation.
+
+To use simulation, we can draw a large number, $R$, of values of
+$\theta_A^{(r)} \overset{\mathrm{iid}}{\sim} f(\theta_A \mid x_A = 63)$ and
+another $R$ values of
+$\theta_B^{(r)} \overset{\mathrm{iid}}{\sim} f(\theta_B \mid x_B = 45)$. Then
+we use these to compute $R$ realisations of
+$\Delta^{(r)} = \theta^{(r)}_B - \theta^{(r)}_A$. We can approximate the
+posterior distribution, $f(\Delta \mid x_A = 63, x_B = 45)$, using these
+simulated $\Delta^{(r)}$ draws. For example, by visualising them or calculating
+statistics of interest.
+
+***Exercises 8--10***
+
+8.  Given the results of the experiment, what is the (posterior) mean and
+    variance of $\Delta$?\
+    (Hint: Are the two posterior distributions independent? Why or why not?)
+
+9.  Simulate a set of $R = 10,000$ draws of $\Delta$ from
+    $f(\Delta \mid x_A = 63, x_B = 45)$. Use these to approximate each of the
+    following quantities:
+
+    a)  the posterior mean of $\Delta$,\
+    b)  the standard deviation of $\Delta$, and\
+    c)  the probability that the two conversion rates will differ by more than
+        0.01, i.e. $$\Pr(\lvert \theta_B - \theta_A \lvert > 0.01 \mid x_A
+        = 63, x_B = 45).$$
+
+    Here is some R code to help you visualise the pdf of the posterior using
+    your simulated values:
+
+    ```{r}
+    #| eval: false
+    R <- 10000
+    set.seed(24205242)
+
+    # ...add your code here...
+
+    ds <- tibble(delta = sampleD)
+    ds |> ggplot(aes(x = delta, y = after_stat(density))) +
+      geom_histogram(colour = "blue", fill = "blue", alpha = 0.4, bins = 100) +
+      geom_density(  colour = "blue", fill = "blue", alpha = 0.4) +
+      geom_vline(xintercept = c(0.01, -0.01), colour = "red") +
+      ggtitle(expression(paste("Simulated posterior pdf of ", Delta))) +
+      xlab(expression(Delta)) +
+      theme_bw()
+    ```
+
+10. Of the non-Bayesian techniques we have learnt about thus far in this unit,
+    which do you think would be appropriate to apply in this setting? How would
+    you implement them and what type of inference/conclusions would they
+    provide?

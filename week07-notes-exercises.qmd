@@ -1,0 +1,371 @@
+---
+title: "Week 7, Notes & Exercises"
+subtitle: "Statistical Thinking (ETC2420 / ETC5242)"
+date-format: "[Semester 2,] YYYY"
+date: "2025"
+toc: true
+format:
+  html:
+    embed-resources: true
+---
+
+```{r}
+#| label: setup
+#| include: false
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+```
+
+For this week, we take our first steps in Bayesian inference. In the first
+part, we revise some probability and practise using Bayes' Theorem. In the
+second part, we learn more about the application of Bayes' Theorem and practise
+using it in a context where the unknown variable takes on only a finite number
+of values. In the third part, we consider a scenario where the unknown variable
+can take an infinite number of possible values. For simplicity, we focus only
+on conjugate situations.
+
+This week is a good opportunity to practise including mathematical symbols in
+your Quarto files, and combine them with doing the calculations using R. A
+useful resource for LaTeX math symbols can be found at [this
+page](https://www.caam.rice.edu/~heinken/latex/symbols.pdf).
+
+# Food hygiene
+
+A food hygiene inspection of Melbourne restaurants is carried out routinely.
+The outcome of each inspection is either a pass or a fail. The inspectors are
+not always reliable at picking up all food hygiene issues. From past
+experience, it is known that the probability of a pass if food hygiene is
+satisfactory is 0.9, and if it is unsatisfactory is 0.3.
+
+***Exercises 1--3***
+
+1.  Fast food restaurants are known to have unsatisfactory standards about 20%
+    of the time. If an inspection of such a restaurant results in a fail, what
+    is the probability it has unsatisfactory food hygiene standards?
+
+2.  Fine dining restaurants are known to have unsatisfactory standards only
+    about 2% of the time. If an inspection of such a restaurant results in a
+    fail, what is the probability it has unsatisfactory food hygiene standards?
+
+3.  Draw tree diagrams to represent this problem.
+
+# Is that a typo? Spell checking using Bayes' Theorem
+
+Have you ever wondered how an internet search engine decides when to correct
+the spelling of a word?[^1] The answer is...by using Bayes' Theorem![^2] Let's
+see how it works.
+
+[^1]: Much of this question has been taken from *Bayesian Data Analysis*,
+    Gelman A, Carlin JB, Stern HS, Dunson DB, Vehtari A and Rubin DB. 3rd
+    edition, Chapman & Hall/CRC texts in statistical science, 2014.
+
+[^2]: The actual spell checking algorithms are much more complex than described
+    here. But the basic principle is right. For more information, see the
+    following blog post by Peter Norvig:
+    <http://www.norvig.com/spell-correct.html>.
+
+Do a search on the word 'radom' using Google. What information do you find?
+
+## Now imagine that you are the computer search engine...
+
+When you type a word like 'radom' into a Google search, how does Google know
+whether you really intended to type 'radom' or whether instead you made a
+spelling error? It seems to consider that you may have intended to type a
+different word, such as 'random' or 'radon'.
+
+In statistics and machine learning, a *language model* is a probability
+distribution defined over sequences of words. Simple language models are
+defined for individual words found in a nominated 'universe of words' -- a
+collection usually obtained from scans of historical texts encompassing at
+least a million words. The model then defines the probability[^3] of each word
+(meaning the chance it will occur again in a new sentence) as a proportion of
+times that word appears in the nominated 'universe of words'. Some language
+models cover a wide variety of topics, while others may be more context
+specific. For example, the 'universe of words' file may relate specifically to
+science, so words that occur more often in scientific discussions would be
+associated with a higher probability than they might be in a more general
+language model. More complex language models construct probabilities for
+sequences of words, and again can be context specific.
+
+[^3]: Some would argue this is really an *estimate* of the relevant
+    probability. Alternatively, it may be taken is as an assessment of *prior
+    belief* about the next likely intended word to appear in the search engine.
+
+We will work with a simple language model, and focus on only three words. While
+a simplification, it provides a nice introduction to the use of Bayes' Theorem
+in a machine learning application.
+
+## The language model
+
+Here we construct the language model probabilities from (past) relative
+frequencies of the three words available from an available universe of words.
+
+Let the variable $W$ represent the *word that was intended to be typed* on a
+given occasion. The three possible values of $W$ in this setting are given by:
+
+-   $W_1 =$ 'random'
+-   $W_2 =$ 'radon'
+-   $W_3 =$ 'radom'
+
+***Exercise 4***
+
+4.  How common do you think each of these three words in the English language?
+    (If you are not familiar with the word 'radon', you can ask Google for a
+    definition.)
+
+Now consider the available relative frequencies, denoted by $RF_i$, for each
+$W_i$, as shown in @tbl-relfreq. The word 'random' occurs much more frequently
+than does the word 'radon', which in turn occurs much more frequently than the
+word 'radom'. (Does this seem sensible to you?)
+
+| $W_i$  | $RF_i$                |
+|:-------|:----------------------|
+| random | $7.6 \times 10^{-5}$  |
+| radon  | $6.05 \times 10^{-6}$ |
+| radom  | $3.12 \times 10^{-8}$ |
+
+: Relative frequency ($RF_i$) for each intended word ($W_i$). {#tbl-relfreq}
+
+***Exercise 5***
+
+5.  With the words 'random', 'radon' and 'radom' being the only words under
+    consideration, construct marginal probabilities for each word as implied by
+    the relative frequencies shown in @tbl-relfreq.
+
+## An observation
+
+Now suppose Google's search engine has been given the search request, 'radom',
+which is a word it recognizes. This is an *observation*, which we will denote
+as $y$, i.e. $y = \text{`radom'}$.
+
+Google's search engine is programmed to consider whether the typed word is the
+word that was intended or if a different word was intended and a typographical
+error occurred. Bayes' Theorem is used to update the marginal probabilities
+implied by the information in @tbl-relfreq, to incorporate the observation of
+$y =
+\text{`radom'}$.
+
+## An error model for $y = \text{`radom'}$
+
+Now to actually use Bayes' Theorem, we need to be able to combine the new
+information about the observation $y$ with the marginal probabilities we have
+for each $W_i$. In this language context, an *error model* is used as it
+identifies the chance that $y$ will occur (as a *mis-typed* word), when in fact
+the true intended word is $W_i$.
+
+Google has a model of spelling and typing errors[^4], which provides the
+conditional probabilities shown in @tbl-errormodel. (Do you think these error
+model probabilities seem reasonable?)
+
+[^4]: Such a model may have been developed from a study where people were
+    followed up after writing emails, so that the intended meaning of words
+    that might have seemed incorrect in those emails could be identified.
+
+| $W_i$  | $\Pr(y = \text{`radom'} \mid W_i)$ |
+|:-------|:-----------------------------------|
+| random | $0.00193$                          |
+| radon  | $0.000143$                         |
+| radom  | $0.975$                            |
+
+: From Google's model of spelling and typing errors, in the case when
+$y = \text{`radom'}$. {#tbl-errormodel}
+
+As the observation $y = \text{`radom'}$ is fixed, we are viewing $\Pr(y =
+\text{`radom'} \mid W_i)$ as a function of $W_i$, with $i \in \{1,2,3\}$ and
+the data fixed at the observed value $y = \text{`radom'}$. Recall that this
+function is called the *likelihood* function.
+
+***Exercise 6***
+
+6.  Should the probabilities in @tbl-errormodel sum to one? Why or why not?
+
+## Updated probabilities
+
+| $W_i$  | $\Pr(W_i \mid y = \text{`radom'})$ |
+|:-------|:-----------------------------------|
+| random |                                    |
+| radon  |                                    |
+| radom  |                                    |
+
+: Conditional distribution of $W_i$ given $y$. {#tbl-posteriors}
+
+***Exercises 7--9***
+
+7.  Use Bayes' Theorem to complete the values for @tbl-posteriors. State your
+    answers to at least four decimal places.
+
+    Note that your updated probabilities should combine *both* of the following
+    facts:
+
+    -   That 'radom' occurs relatively infrequently, according to the given
+        language model, compared to the word 'random'.
+
+    -   Depending on the intended word, the chance of actually typing 'radom'
+        can happen with different probabilities.
+
+8.  Should the probabilities in @tbl-posteriors sum to one? Why or why not?
+
+9.  If you had used the relative frequencies $RF_i$ (from @tbl-relfreq) in
+    place of the normalised probabilities $\Pr(W_i)$ in Bayes' Theorem, would
+    your resulting conditional probabilities have the same values? Why or why
+    not?
+
+# Working with Bernoulli trials
+
+## The data model
+
+Consider an experiment where a random sample of $n$ observations, each taking
+one of two possible (binary) outcomes, with $$u_{i} =
+\begin{cases}
+1, & \text{if success,} \\
+0, & \text{if failure.}
+\end{cases}$$
+
+These are *Bernoulli trials*: each of these random outcomes are independent and
+have the same probability of a success, which we will denote here as $\theta$.
+The likelihood function corresponding to $U_1, U_2, \dots, U_n \mid \theta
+\overset{\mathrm{iid}}{\sim} \mathrm{Bernoulli}(\theta)$ trials is $$L(\theta)
+= \prod_{i=1}^{n}\theta^{u_{i}}(1-\theta)^{1-u_{i}}
+= \theta^{\sum_{i=1}^{n}u_{i}}(1-\theta)^{n-\sum_{i=1}^{n}u_{i}}.$$ Rather than
+thinking of modelling each of the individual $U_i=u_i$ outcomes as a single
+$\mathrm{Bernoulli}(\theta)$ random variable, we can consider the sum of $n$
+such $\mathrm{Bernoulli}(\theta)$ outcomes, $X=\sum_{i=1}^{n}U_{i}$. In this
+case, $X \mid \theta \sim \mathrm{Binomial}(n,\theta)$ distribution, taking on
+a value $x\in \{0, 1, \dots, n\}$. Once $X=x$ is observed, the likelihood
+function associated with $X \mid \theta \sim
+\mathrm{Bernoulli}(\theta)$ is given by
+$$L(\theta) = \binom{n}{x}\theta^{x}(1-\theta)^{n-x}.$$
+
+Note that the combinatorial coefficient $\binom{n}{x} = \frac{n!}{x! (n-x)!}$
+does not depend on $\theta$.
+
+## A beta prior for the binomial (or Bernoulli) likelihood
+
+The $\mathrm{Beta}(\alpha, \beta)$ distribution is the prior conjugate to the
+binomial likelihood function. Remember the probability density function (pdf)
+for $\theta \sim \mathrm{Beta}(\alpha, \beta)$ is
+$$f(\theta \mid \alpha, \beta)
+= \frac{\Gamma(\alpha + \beta)}
+       {\Gamma(\alpha) \Gamma(\beta)}
+  \theta^{\alpha-1}(1-\theta)^{\beta - 1},
+\quad \text{for } \theta \in (0,1), \; \alpha>0, \; \beta>0.$$ Also we know the
+values of the prior mean and variance:
+
+-   $\mathbb{E}(\theta)   = \frac{\alpha}{\alpha + \beta}$
+-   $\mathrm{var}(\theta) = \frac{\alpha \beta}{(\alpha+\beta)^2(\alpha+\beta+1)}$
+
+Probabilities for $\theta$ (e.g., $\Pr(\theta < 0.2)$) and quantiles associated
+with the $\mathrm{Beta}(\alpha, \beta)$ distribution may be obtained using the
+R functions `pbeta()` and `qbeta()`.
+
+## Bayes' Theorem
+
+Bayes' Theorem, stated for a continuous parameter and a model for continuous
+data, says that if $X \mid \theta$ has pdf given by $f(x \mid \theta)$, and
+$\theta$ has pdf $f(\theta)$, then the posterior pdf for $\theta \mid X = x$
+satisfies $$f(\theta \mid x) =
+\frac{f(x \mid \theta)~f(\theta)}
+     {\int_{\Theta} ~f(x \mid \theta)~f(\theta)~d\theta}.$$
+
+## Beta-binomial conjugate pair
+
+If $\theta \sim \mathrm{Beta}(\alpha, \beta)$, for $0 < \theta < 1$, denotes
+the prior distribution, and if $X$ given $n$ and $\theta$ has a
+$\mathrm{Binomial}(n,\theta)$ distribution, then the posterior distribution for
+$\theta$ when $X = x$ will be a $\mathrm{Beta}(\tilde{\alpha}, \tilde{\beta})$,
+where $\tilde{\alpha} = \alpha + x$ and $\tilde{\beta} = \beta + (n - x)$.
+
+The parameter we wish to infer is $\theta$. We also have parameters $\alpha$
+and $\beta$, which are used to define the prior distribution. To distinguish
+between these two different types of parameters, we usually refer to parameters
+that define prior and posterior distributions (e.g., $\alpha$ and $\beta$) as
+*hyper-parameters*.
+
+***Exercises 10--17***
+
+10. Create a function, named `beta_binomial()`, that takes as input the
+    following values:
+
+    -   $n =$ the sample size (the number of iid observations from
+        $\mathrm{Bernoulli}(\theta)$)
+    -   $x =$ the number of successes in the $n$ observations
+    -   $\alpha =$ the first hyper-parameter of the $\mathrm{Beta}(\alpha,
+        \beta)$ prior distribution (with default value = 1)
+    -   $\beta =$ the second hyper-parameter of the $\mathrm{Beta}(\alpha,
+        \beta)$ prior distribution (with default value = 1)
+
+    and returns as output a list containing the elements:
+
+    -   $\tilde{\alpha} =$ the first hyper-parameter of the
+        $\mathrm{Beta}(\tilde{\alpha}, \tilde{\beta})$ posterior distribution
+    -   $\tilde{\beta} =$ the second hyper-parameter of the
+        $\mathrm{Beta}(\tilde{\alpha}, \tilde{\beta})$ posterior distribution
+
+11. Now, suppose $\theta \sim \mathrm{Beta}(\alpha = 4, \beta = 4)$ when $X$ is
+    modelled with a $\mathrm{Binomial}(n = 40, \theta)$ distribution, and $x =
+    12$ is observed. Use your function to determine the posterior distribution.
+    (Also, verify that you can get this same answer by manual calculation.)
+    Explain what this distribution represents.
+
+12. Visualise the prior and posterior pdfs, and the likelihood function.
+    Superimpose these three curves together on the same plot.
+
+    Hint: some R code to help you with the visualisation is below. You will
+    need to provide the values of some of the variables, such as `alpha` and
+    `Q1out`.
+
+    ```{r}
+    #| label: firstplot
+    #| echo: true
+    #| eval: false
+    thetaxx <- seq(0.001, 0.999, length.out = 100)
+    priorxx <- dbeta(thetaxx, alpha, beta)
+    postxx  <- dbeta(thetaxx, Q1out$alpha_tilde, Q1out$beta_tilde)
+    likexx  <- dbinom(xobs, size = n, prob = thetaxx)
+    nlikexx <- 100 * likexx / sum(likexx)
+
+    df <- tibble(theta                   = thetaxx,
+                 `prior pdf`             = priorxx,
+                 `normalised likelihood` = nlikexx,
+                 `posterior pdf`         = postxx)
+
+    df_longer <- df |>
+      pivot_longer(-theta, names_to = "distribution", values_to = "density")
+
+    p1 <- df_longer |>
+      ggplot(aes(x = theta, y = density, colour = distribution)) +
+      geom_line() +
+      theme_bw()
+    p1
+    ```
+
+13. Using the prior and posterior distributions from above, calculate both the
+    prior probability $\Pr(0.2 < \theta < 0.4)$, and the posterior probability
+    $\Pr(0.2 < \theta < 0.4 \mid x = 12)$.
+
+14. Write a function, named `beta_meanvar()`, that takes as input the parameter
+    values `alpha` and `beta`, corresponding to $\alpha$ and $\beta$,
+    respectively, and returns a list containing the mean (named `mean`) and
+    variance (named `var`) of the $\mathrm{Beta}(\alpha, \beta)$ distributions.
+
+15. Use your function to calculate the mean and variance for both the $\theta
+    \sim \mathrm{Beta}(\alpha = 4, \beta = 4)$ prior distribution, and for the
+    corresponding posterior distribution for $\theta$ when $x = 12$.
+
+16. Explain why the denominator in Bayes' Theorem above, once evaluated, is
+    **not** a function of $\theta$.
+
+17. Using the data $x = 12$ from $n$ Bernoulli trials, and the
+    $\mathrm{Beta}(\alpha = 4, \beta = 4)$ prior, calculate the value of this
+    denominator as follows:
+    $$f(x) = \int_{\Theta} ~f(x \mid \theta)~f(\theta)~d\theta
+           = \frac{f(x \mid \theta^{\ast})~f(\theta^{\ast})}
+                  {f(\theta^{\ast} \mid x)},$$ for any
+    $\theta = \theta^{\ast} \in (0,1)$.
+
+    \[Hint: remember you can evaluate the likelihood using the `dbinom()`
+    function, and you can evaluate both the prior and the posterior pdfs using
+    the `dbeta()` function. As for $\theta^{\ast}$, any value in $(0,1)$ should
+    give you the same answer, so just pick a few to check that you always get
+    the same answer!\]

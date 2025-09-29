@@ -1,0 +1,176 @@
+---
+title: "Week 5, Notes & Exercises"
+subtitle: "Statistical Thinking (ETC2420 / ETC5242)"
+date-format: "[Semester 2,] YYYY"
+date: "2025"
+toc: true
+format:
+  html:
+    embed-resources: true
+---
+
+This week we apply the bootstrap method to calculate confidence intervals for
+several different parameters. We do so using the CBT data from Week 3. Along
+the way, we will practise using functions and loops in R.
+
+```{r}
+#| message: false
+library(tidyverse)
+set.seed(24205242)
+```
+
+# Visualising empirical distributions
+
+In the exercises we do later below, there will be multiple times when we want
+to visualise the distribution of a set of values. Rather than writing the same
+code multiple times, we can write a function that does what we want and then
+simply call that function whenever we need it.
+
+The code chunk below defines a function for this purpose. However, some of the
+code has been omitted. Can you fill in the missing parts?
+
+***Exercise 1***
+
+1.  Complete the code below to define a working function.
+
+You'll need to change every instance of "`AAA`" with some suitable R code.
+
+```{r}
+#| eval: false
+# Creates a histogram and smoothed histogram given a vector of values.
+dataplot <- function(x, bins = 50, colour = "blue") {
+  ggplot(tibble(x = x), AAA(x = x, y = after_stat(density))) +
+    geom_AAA(bins = bins, colour = colour, fill = colour, alpha = 0.2) +
+    geom_AAA(colour = colour, fill = colour, alpha = 0.2) +
+    theme_bw()
+}
+```
+
+Try out your function on some randomly generated data:
+
+```{r}
+#| eval: false
+dataplot(rnorm(1000))
+```
+
+# Cognitive behaviour therapy
+
+The following exercises will guide you through the process of applying the
+bootstrap method to calculate a confidence interval.
+
+Use the same `CBT.csv` data file that we used in the Week 3 tutorial. Some of
+the exercises below repeat steps or ideas from Week 3.
+
+## Difference in means
+
+Initially, we will estimate the difference between two means,
+$\delta = \mu_2 - \mu_1$, like we did in Week 3.
+
+***Exercises 2--9***
+
+2.  Read in the `CBT.csv` data file into a tibble called `CBT`.
+
+3.  Create a new column called `Diff` which is the difference in scores for
+    each subject, in the same way as in the Week 3 tutorial.
+
+4.  Draw a histogram of these differences, overlayed with a smoothed histogram.
+
+5.  Is it possible to also overlay the population distribution on this plot? If
+    yes, then do so. If not, then explain why.
+
+6.  Calculate the 95% confidence interval for $\delta$ using methods you learnt
+    in Week 3. (This is for comparing against the bootstrap method, which we do
+    below.)
+
+7.  Starting with the `Diff` variable, generate $B = 5000$ bootstrap samples.
+    For each bootstrap sample, calculate and save the sample mean, storing them
+    in a vector (that vector should be of length 5000, with one value per
+    bootstrap sample). You will need this vector for later exercises. Remember
+    to set a seed so that your bootstrap samples are reproducible.
+
+Some code to get you started is below, but you'll need to change every instance
+of "`AAA`" with some suitable R code.
+
+```{r}
+#| eval: false
+B <- AAA
+xbar_boot <- rep(NA, B)
+
+# Generate the bootstrap samples and calculate statistics.
+for(b in 1:B) {
+  AAA <- sample(AAA)
+  xbar_boot[b] <- AAA
+}
+```
+
+8.  Calculate a 95% confidence interval for $\delta$ from your bootstrap
+    samples, using the percentile bootstrap method. (Hint: use the `quantile()`
+    function.)
+
+9.  The $B$ sample means of the bootstrap samples provide us with an empirical
+    estimate of the sampling distribution of the `Diff` statistic. Let's
+    visualise it. Draw a histogram of these $B$ values and overlay it with a
+    smoothed histogram. Then also add the following elements:
+
+    -   Vertical lines to show the lower and upper bounds of the 95% confidence
+        intervals you calculated above. Use different colours and line styles
+        to distinguish between the bootstrap-based CI (from Exercise 8) and the
+        one you calculated earlier (from Exercise 6).
+    -   An appropriate title and axis labels.
+
+Some code to get you started is below, but you'll need to change every instance
+of "`AAA`" with some suitable R code, and add any extra code as appropriate.
+
+```{r}
+#| eval: false
+dataplot(xbar_boot, bins = 100) +
+  geom_vline(AAA) +
+  xlab(AAA) +
+  ggtitle(AAA)
+```
+
+## Median difference
+
+We now wish to estimate a different parameter: the median of the pairwise
+difference in scores. Let $A_1$ and $A_2$ refer to the two scores for an
+arbitrary subject in the experiment. Then we can refer to the parameter of
+interest as $m = \mathrm{median}(A_2 - A_1)$.
+
+With the bootstrap method, it is very easy to adapt our earlier code to work
+for $m$. The statistic we want to use this time is the sample median of the
+score differences.
+
+***Exercises 10--14***
+
+10. Calculate a point estimate of $m$.
+
+11. Add extra code to your answer for Exercise 7 (and re-run it) so that you
+    can use the same bootstrap samples to generate a CI for $m$. You simply
+    need to calculate the new statistic and store it.
+
+12. Calculate a 95% confidence interval for $m$ from your bootstrap samples,
+    using the percentile bootstrap method.
+
+13. Recreate the plot from Exercise 9, but now for inferring $m$. This time,
+    you should only show the bootstrap-based CI.
+
+14. Describe the approximate sampling distribution. What interesting features
+    do you notice?
+
+## Standard deviation of the differences
+
+For our final step, we will infer the standard deviation of the pairwise
+difference in scores, $\sigma = \mathrm{sd}(A_2 - A_1)$.
+
+**Exercises 15--16**
+
+15. What would be an appropriate statistic to use for this parameter?
+
+16. Repeat Exercises 10--14 to perform inference for $\sigma$ using your chosen
+    statistic.
+
+# More information about functions
+
+If you want to learn more about functions in R, the
+[Functions](https://r4ds.hadley.nz/functions.html) chapter in the *R for Data
+Science* book is a useful resource.
