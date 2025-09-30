@@ -108,6 +108,8 @@ y <- qnorm(x, mean = 3, sd = 0.1)
 ggplot() + aes(x = x, y = y) + geom_point()
 ```
 
+
+
 The function `rnorm()` is a bit different to the others. Rather than
 calculating some aspect of a normal distribution, it will randomly generate
 realisations from it. The first argument to the function is the number of
@@ -162,6 +164,17 @@ This calculates $\Pr(X \leqslant 3)$ where $X \sim \mathrm{Bi}(5, 0.4)$. If
 instead we wanted $\Pr(X < 3)$, then we should actually calculate
 $\Pr(X \leqslant 2)$.
 
+
+
+```{r}
+qbinom(0.7, size = 5, prob = 0.4)
+```
+
+
+```{r}
+rbinom(22,17,0.5)
+```
+
 ## Arbitrary finite discrete distributions
 
 You can use the `sample()` function to simulate from any finite discrete
@@ -205,38 +218,89 @@ sample(days)
 
     a)  The probability of getting exactly 4 heads when flipping a fair coin 8
         times.
+        
+```{r}
+dbinom(4,8,0.5)
+```
+      
     b)  The probability of getting at most 15 heads when flipping a fair coin
         28 times.
+        
+```{r}
+pbinom(15,28,0.5)
+```
+        
     c)  The probability of getting more than 12 heads when flipping a fair coin
         18 times.
+```{r}
+1-pbinom(12,18,0.5)
+pbinom(12,18,0.5,lower.tail = FALSE)
+```
+        
     d)  The probability of getting an odd number of heads when flipping a fair
         coin 14 times.
+```{r}
+n <- (1,3,5,7,9,11,13)
+dnorm(n,14,0.5)
+```
+        
+
 
 2.  Explore the Poisson distribution. Find its help page. Calculate the
     following for a Poisson distribution with parameter $\lambda = 5$:
 
     a)  The probability of observing a 3.
+```{r}
+dpois(3,5,log = FALSE)
+```
+    
     b)  The probability of observing a number of at most 2.
+```{r}
+ppois(2,5,lower.tail = TRUE,log.p = FALSE)
+```
+    
     c)  The probability of observing a number of at least 4.
+```{r}
+ppois(4,5,lower.tail = FALSE, log.p = FALSE)
+```
+
     d)  Generate 6 realisations.
+    
+```{r}
+rpois(6,5)
+```
+    
 
 3.  Calculate the following quantiles using R:
 
     a)  The 75th percentile (0.75 quantile) of a standard normal.
+```{r}
+qnorm(0.75, mean=0,sd = 1)
+```
+
     b)  The 30th percentile of a t-distribution with 10 degrees of freedom.
+```{r}
+q
+```
+    
     c)  The median of a gamma distribution with shape parameter 2 and rate
         parameter 3.
+```{r}
+qgamma(0.5,2,3)
+```
 
 4.  Let $X_1, X_2, \dots, X_9$ be a random sample. We are told that
     $\mathbb{E}(X_3) = 7$ and $\mathrm{var}(X_4) = 4$.
 
     a)  What is $\mathrm{sd}(X_2)$?
+    
     b)  What is $\mathrm{var}(X_7 + X_8)$?
     c)  What is an approximate distribution of the sample mean, $\bar{X}$?
 
 5.  Let $X \sim \mathrm{N}(1, 2)$. What is $\mathbb{E}(X^2)$? Approximate this
     by simulating a large number of normal random variables and doing an
     appropriate calculation.
+    3
 
 6.  Use simulations to verify the law of large numbers (LLN) when sampling from
     each of the following distributions:
