@@ -1,0 +1,609 @@
+---
+title: "Week 10, Notes & Exercises"
+subtitle: "Statistical Thinking (ETC2420 / ETC5242)"
+date-format: "[Semester 2,] 2025"
+date: "2025"
+toc: true
+format:
+  html:
+    embed-resources: true
+editor: 
+  markdown: 
+    wrap: 72
+---
+
+```{r}
+#| label: setup
+#| include: false
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This week we explore a dataset about Lego sets using multiple linear
+regression models.
+
+We need the following R packages:
+
+```{r}
+#| message: false
+library(tidyverse)
+library(openintro)
+library(GGally)
+library(broom)
+library(car)
+library(meifly)
+```
+
+Make sure that you work through these notes and exercises *linearly*,
+from start to finish. The later content builds upon earlier stages and
+assumes you have completed each exercise.
+
+# Lego
+
+Lego is popular system of construction toys consisting of various types
+of plastic parts, called *bricks*, that can be joined together to make
+models. The parts are typically sold in *sets* that consist of a set of
+bricks and instructions for how to put those bricks together to make a
+particular model. The sets also include plastic figurines, called
+*minifigures*.
+
+If you are not familiar with Lego, do an online image search for "Lego"
+to see many examples.
+
+Here are two particular sets that we will look at:\
+<https://www.lego.com/en-au/product/stephanie-s-soccer-practice-41330>\
+<https://www.lego.com/en-au/product/safari-off-roader-60267>
+
+Each Lego set has a unique *item number* and is part of a *theme*. The
+examples above come from the "Friends" and "City" themes. Today, we will
+explore some data about sets from these two themes.
+
+## Lego data
+
+The following code chunk will create a tibble called `lego` that will
+contain the data we will use for today's exercises.
+
+```{r}
+lego <- lego_sample |>
+  filter(theme %in% c("Friends", "City"))
+```
+
+These data were collected a few years ago and consist of a sample of
+Lego sets, recording various features of these sets and also their sale
+price on Amazon at the time.
+
+Explore this dataset to familiarise yourself with what each variable
+means and what kind of values are recorded.
+
+For example, you could:
+
+-   Read the help page for the original data (`help("lego_sample")`)
+-   Look directly at the data (`View(lego)`)
+-   Create any visualisations that you find helpful.
+
+Pay particular attention to the following columns, which we will use
+today:
+
+-   `theme`
+-   `pieces`
+-   `amazon_price`
+-   `year`
+-   `pages`
+-   `minifigure`
+-   `unique_pieces`
+
+The variable `amazon_price` is the sale price on Amazon. We will use
+this as the response variable in the models we build. Henceforth we will
+use "sale price" to refer to this particular price (and we will ignore
+the variable `price`, which is the recommended retail price).
+
+***Exercises 1--4***
+
+1.  Do any of the variables above have missing values (`NA`)?\
+    If so, can we replace them with a suitable value?
+
+Yes, I think there are several variables missing especially in
+minifigures , packaging and weight.
+
+```{r}
+lego <- lego |> replace_na(list(minifigures =0))
+```
+
+```{r}
+lego_missing <- is.na(lego$ minifigures)
+lego[lego_missing,"manufactures"] <-0
+```
+
+2.  Add a new variable to `lego` called `is_city` that has a value of 1
+    if the set is from the City theme and a value of 0 otherwise.
+
+    (This type of variable is known as an *indicator variable*. We will
+    use it later as part of building our models.)
+
+```{r}
+
+
+library(dplyr)
+
+lego <- lego %>%
+  mutate(is_city = if_else(theme == "City", 1, 0))
+
+```
+
+3.  Use `ggpairs()` to create a visualisation of the variables listed
+    above.
+
+```{r}
+library(dplyr)
+library(GGally)
+
+# pick the variables you mentioned (edit the names to match your data)
+vars <- c("price", "pieces", "minifigures", "year", "is_city")
+
+lego_plot_data <- lego %>%
+  select(any_of(vars)) %>%
+  # keep numeric columns for correlations / densities, etc.
+  mutate(is_city = as.factor(is_city)) %>%
+  tidyr::drop_na()
+
+GGally::ggpairs(
+  lego_plot_data,
+  columns = c("price", "pieces", "minifigures", "year")
+)
+
+library(dplyr)
+library(GGally)
+
+vars <- c("price", "pieces", "minifigures", "year", "is_city")
+
+lego_plot_data <- lego %>%
+  select(any_of(vars)) %>%
+  mutate(is_city = factor(is_city, levels = c(0, 1), labels = c("Other", "City"))) %>%
+  tidyr::drop_na()
+
+GGally::ggpairs(
+  lego_plot_data,
+  columns = c("price", "pieces", "minifigures", "year"),
+  mapping = aes(color = is_city),
+  progress = FALSE
+)
+
+
+```
+
+4.  Draw a scatter plot of the Amazon price vs the number of pieces in
+    the set. Distinguish the two themes by colour (i.e., plot each point
+    in one of two colours, based on which of the two themes each point
+    represents).
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+# If your price column is named differently (e.g., price_amazon), change it below
+lego_plot <- lego %>%
+  mutate(
+    is_city = factor(is_city, levels = c(0, 1), labels = c("Other", "City"))
+  ) %>%
+  tidyr::drop_na(amazon_price, pieces)
+
+ggplot(lego_plot, aes(x = pieces, y = amazon_price, color = is_city)) +
+  geom_point(alpha = 0.7) +
+  labs(
+    x = "Number of pieces",
+    y = "Amazon price",
+    color = "Theme",
+    title = "Amazon price vs. number of pieces",
+    subtitle = "City vs Other themes"
+  ) +
+  theme_minimal()
+
+```
+
+## Questions for today
+
+In today's exercises we explore the following broad questions:
+
+A. Do City sets cost more than Friends sets? (This is a **description**
+question.)
+
+No, there is not enough evidence to illustrate that the city set cost
+more than friends set.
+
+B. Can we predict the sale price based on features of each set? (This is
+a **prediction** question.)
+
+Sure, I think we could use the linear model to predict each set.
+
+```{r}
+# --- Packages ---------------------------------------------------------------
+library(dplyr)
+library(tidyr)
+library(tidymodels)
+library(GGally)   
+
+
+lego_city <- lego |> filter (is_city == "1")
+lego_other <- lego |> filter (is_city == "0")
+# 假设你的目标变量是 sale_price，特征包括 pieces, minifigures, year, is_city
+model_lm_1 <- lm(amazon_price ~ pieces + minifigures + year + is_city, data = lego_city)
+
+model_lm_2 <- lm(amazon_price ~ pieces + minifigures + year + is_city, data = lego_other)
+# 查看回归结果
+summary(model_lm_2)
+
+
+```
+
+# Simple models
+
+To start with, let's use the techniques we have learnt earlier (up to
+and including simple linear regression) to do some relevant analyses.
+
+***Exercises 5--6***
+
+5.  What is the average sale price for each theme in the dataset?\
+    Which theme costs more, and by how much?
+
+```{r}
+mean(lego_city$amazon_price)
+mean(lego_other$amazon_price)
+```
+
+From the perspective of the average sale price, i think city set cost
+more, by 10.2.
+
+6.  Use simple linear regression to model how the sale price depends on
+    the number of pieces in the set. Do this separately for the Friends
+    and City sets. Look at the regression coefficients of the fitted
+    models. What do you notice? How does that relate to the result of
+    Exercise 5?
+
+```{r}
+model_friends <- lm(amazon_price ~pieces, data =lego_other)
+model_city  <- lm(amazon_price ~pieces , data = lego_city)
+tidy(model_friends)
+tidy(model_city)
+```
+
+# Multiple regression
+
+## First steps
+
+In a multiple regression model we specify multiple (more than one)
+predictor variables.
+
+Consider the following model:
+
+```{r}
+#| eval: false
+model1 <- lm(amazon_price ~ pieces + is_city, data = lego)
+```
+
+We can write the model equation for this as follows:
+$$y = \beta_0 + \beta_\text{pieces} \, x_\text{pieces} +
+                \beta_\text{city}   \, x_\text{city} + \varepsilon$$
+
+This has two predictor variables:
+
+-   The number of pieces in each set (`pieces`, $x_\text{pieces}$)
+-   An indicator variable to specify whether each set is in the City
+    theme (`is_city`, $x_\text{city}$)
+
+The indicator variable only has two possible values, 0 or 1. That means
+the value of $\beta_\text{city}$ effectively just gets "added on" to the
+intercept for Lego sets in the City theme, and doesn't appear for sets
+in the Friends theme. In other words, the above equation will simplify
+to the following: $$y =
+\begin{cases}
+(\beta_0 \;\: \phantom{+ \beta_\text{city}}) +
+\beta_\text{pieces} \, x_\text{pieces} + \varepsilon & \text{(Friends set)} \\
+(\beta_0 + \beta_\text{city}) +
+\beta_\text{pieces} \, x_\text{pieces} + \varepsilon & \text{(City set)} \\
+\end{cases}$$
+
+This is similar to the simple linear regression models we fitted in the
+earlier exercises, except that here they are combined together into a
+single model. Also, here they are constrained to have the same slope
+parameter, $\beta_\text{pieces}$, rather than allowed to have a
+different value for the slope for each theme.
+
+***Exercises 7--8***
+
+7.  Fit the above model. Show that this model gives a similar fit to the
+    simple linear regression models.
+
+```{r}
+model1 <- lm(amazon_price ~ pieces + is_city , data =lego)
+
+tidy(model1)
+
+```
+
+8.  What is the interpretation of $\beta_\text{city}$ in this model?
+
+It is the average difference in sale price for lego sets in the city
+theme, as compared to sets in the friends theme that have **the same
+number of pieces.**
+
+## Full model
+
+Let's now fit a model that has **all** of our desired predictors:
+
+```{r}
+#| eval: false
+formula_full <- amazon_price ~ pieces + is_city + year + pages + minifigures + unique_pieces
+model_full <- lm(formula_full, data = lego)
+tidy(model_full)
+```
+
+For convenience later on, we have stored the model formula in its own
+object (`formula_full`) and simply passed this to the `lm()` function.
+
+```{r}
+formula_full <- lm()
+```
+
+***Exercise 9***
+
+9.  Explore diagnostic plots for this model. What can you say about the
+    residuals?
+
+*There are further exercises on model checking and diagnostics at the
+bottom of these notes (see [Further diagnostics]). Typically we would go
+through those steps first before proceeding further. However, we have
+moved those parts to the end to allow you to cover some of the more
+important material earlier. We recommend working through the exercises
+in the order we have presented.*
+
+## Interpretation of coefficients
+
+Consider the following models:
+
+```{r}
+#| eval: false
+tidy(lm(amazon_price ~ is_city,                        data = lego))
+tidy(lm(amazon_price ~ is_city + pieces,               data = lego))
+tidy(lm(amazon_price ~ is_city          + minifigures, data = lego))
+tidy(lm(amazon_price ~ is_city + pieces + minifigures, data = lego))
+```
+
+Each model includes the `is_city` predictor. We can try to interpret the
+coefficient of this predictor as a way to quantify the difference
+between Friends and City sets.
+
+***Exercises 10--13***
+
+10. Fit the above models and look at the fitted coefficient values. What
+    do you notice?
+
+11. Can you explain why the estimated coefficients of `is_city` are the
+    same/different across these models?
+
+    The following plots might help:
+
+    ```{r}
+    #| eval: false
+    lego |>
+      ggplot(aes(x = pieces, y = theme)) +
+      geom_boxplot(col = "blue", fill = "lightblue") +
+      theme_bw()
+
+    lego |>
+      ggplot(aes(x = pieces)) +
+      geom_histogram(bins = 15) +
+      facet_grid(theme ~ .) +
+      theme_bw()
+
+    lego |>
+      ggplot(aes(x = minifigures, y = theme)) +
+      geom_boxplot(col = "blue", fill = "lightblue") +
+      theme_bw()
+
+    lego |>
+      ggplot(aes(x = minifigures)) +
+      geom_bar() +
+      facet_grid(theme ~ .) +
+      theme_bw()
+    ```
+
+12. For each model, what is the meaning of the coefficient of `is_city`
+    (i.e., how do we interpret it)?
+
+13. Today's first broad question was, "Do City sets cost more than
+    Friends sets?"\
+    Based on the analyses thus far, how would you answer this question?
+
+# Model selection
+
+We have many possible predictors we could use. Which set of them would
+give the best model, for prediction?
+
+We explore two automated approaches for selected a good set of
+predictors.
+
+## Stepwise selection
+
+The idea behind *stepwise selection* is to consider adding or removing
+predictors one at a time to see whether it would improve the model. The
+best such addition or deletion is selected, and the process is repeated
+until no such improvements can be found.
+
+To determine which choices improve the model at each step, a model
+performance measure is used, such as the Akaike information criterion
+(AIC). The choice that gives the best performance based on this measure
+is selected.
+
+To start the algorithm, we need to begin with a particular model and
+also a set of all possible predictors we wish to consider. The full
+algorithm would allow adding or removing predictors at each step.
+However, it is possible to restrict the choices to only consider adding
+new predictors (this is called *forward selection*) or only consider
+removing existing predictors (this is called *backward elimination*).
+
+The algorithm is not guaranteed to find the best model, and using it
+with different starting points or directions (forward vs backward) can
+also lead to different final models. Therefore, in practice it can be
+helpful to try it with different starting points, and also use it more
+as an exploratory tool rather than as the final and only method to
+select a model.
+
+The function `step()` in R will run stepwise selection with a given
+model. Here's how we can use it.
+
+Running it with a given model will, by default, run backward elimination
+with that model:
+
+```{r}
+#| eval: false
+step1 <- step(model_full)
+```
+
+The printed output shows the evolution of the algorithm, including what
+choices it made at each step. In this case, at the first step it remove
+`unique_pieces`, then `is_city` in the second step, then `pages`. After
+that, it decided to step, because removing any other predictor leads to
+a worse AIC. The final chosen model is returned, and here we have saved
+it as `step1`.
+
+To allow both adding and removing predictors at each step, specify the
+`direction = "both"` argument:
+
+```{r}
+#| eval: false
+step2 <- step(model_full, direction = "both")
+```
+
+In both of the above, we have started with the full model and let the
+algorithm select some subset of the predictors. We could instead start
+with a very simple model and let the algorithm add further predictors.
+To do so, we need to tell `step()` which predictors it is allowed to
+use. We do that by specifying a second argument that contains all of the
+allowed predictors, in the form of a formula (the same as when
+specifying a model). For example:
+
+```{r}
+#| eval: false
+model_empty <- lm(amazon_price ~ 1, data = lego)
+step3 <- step(model_empty, formula_full)
+```
+
+Notice that in this way of using `step()`, it will automatically allow
+adding and removing predictors, without needing to specify
+`direction = "both"`.
+
+It might seem more cumbersome to set it up this way compared to the
+earlier versions. When there are a large number of predictors, it could
+be difficult or impossible to fit a model with all of them included (a
+"full" model), in which case the only option for us is to start `step()`
+with a simpler model.
+
+***Exercise 14***
+
+14. Run stepwise selection in the three ways described above. What
+    models get chosen each time?\
+    How do `step1`, `step2` and `step3` relate to each other?
+
+## Exhaustive search
+
+If the number of predictors is relatively small, it is possible to
+simply try all possible combinations and select the best one. The
+function `fitall()` from the `meifly` package can do that for us.
+
+Here is how we use it:
+
+```{r}
+#| eval: false
+lego_predictors <- c("pieces", "is_city", "year", "pages", "minifigures", "unique_pieces")
+lego_models <- fitall(lego$amazon_price,
+                      lego[, lego_predictors],
+                      method = "lm")
+```
+
+The object `lego_models` now contains a list of **all** of the fitted
+models (63 of them in this case!). The best way to see the results is to
+use `summary()` to get model performance measures for each model, sorted
+in order by performance and focusing on the top few models:
+
+```{r}
+#| eval: false
+summary(lego_models) |>
+  arrange(desc(AIC)) |>
+  head(5)
+```
+
+Note: the AIC and BIC values in these summaries are **negated** (i.e.,
+the negative AIC value is reported, rather than AIC itself), which means
+**larger** values are better.
+
+An alternative summary to the above is to use `glance()` (from the
+`broom` package) as follows:
+
+```{r}
+#| eval: false
+lego_models |>
+  map_df(glance) |>
+  mutate(model = seq_along(lego_models)) |>
+  arrange(AIC) |>
+  select(logLik, AIC, BIC, r.squared, adj.r.squared, nobs, model) |>
+  head(5)
+```
+
+It looks like model 21 performs the best on the key measures (AIC, BIC,
+adjR2), so we can select that one. We extract it from the list as
+follows:
+
+```{r}
+#| eval: false
+model_best <- lego_models[[21]]
+```
+
+***Exercise 15***
+
+15. How does model 21 from here compare to the models chosen earlier by
+    stepwise selection?\
+    Which model would you recommend should be selected for prediction?
+
+# Further diagnostics
+
+*In a standard modelling scenario, you would explore the following model
+checks before proceeding to a final model or doing extensive model
+selection. We have moved these parts here at the end to ensure you cover
+the more important material earlier. Go through the material above first
+before tackling this section.*
+
+## Influential points
+
+***Exercises 16--17***
+
+16. Consider the full model. Are there any potentially highly
+    influential points? Calculate the rule-of-thumb threshold for the
+    leverage score and Cook's $D$ and find all data points that pass
+    this threshold.
+
+17. Investigate these points and comment on anything you notice.
+
+## Collinearity
+
+***Exercise 18***
+
+18. Calculate the variance inflation factor (VIF) for each predictor.
+
+In exploring the data (see Exercise 3) you hopefully noticed that the
+number of pieces in each Lego set is highly correlated with the number
+of unique pieces. If we include both of these as predictors in a
+regression model, we will see the impact of collinearity on the model
+fit.
+
+Consider the following models:
+
+```{r}
+#| eval: false
+tidy(lm(amazon_price ~ pieces + unique_pieces, data = lego))
+tidy(lm(amazon_price ~ pieces,                 data = lego))
+tidy(lm(amazon_price ~          unique_pieces, data = lego))
+```
+
+***Exercise 19***
+
+19. How do the standard errors for `pieces` and `unique_pieces` vary
+    across these models?
