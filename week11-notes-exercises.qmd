@@ -1,0 +1,132 @@
+---
+title: "Week 11, Notes & Exercises"
+subtitle: "Statistical Thinking (ETC2420 / ETC5242)"
+date-format: "[Semester 2,] YYYY"
+date: "2025"
+toc: true
+format:
+  html:
+    embed-resources: true
+---
+
+```{r}
+#| label: setup
+#| include: false
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This week we continue our exploration of the Lego dataset (see Week 10), now
+focusing on prediction.
+
+First we load some R packages:
+
+```{r}
+#| message: false
+library(tidyverse)
+library(openintro)
+library(broom)
+```
+
+# Revision
+
+We start with some revision from last week...
+
+***Exercises 1--2***
+
+1.  Load the Lego data and prepare it the same way as last week (add the
+    `is_city` variable, etc.).
+
+2.  Which model was selected as the best model for prediction in last week's
+    exercises?
+
+# Estimating prediction performance
+
+We now explore some measures of prediction performance, based on using only the
+original data (the same as we used for fitting the models, i.e. the 'training
+data').
+
+In the following exercises, you need to use the following three models:
+
+a)  The 'best' model (see Exercise 2)
+b)  The full model (which includes all predictors)
+c)  The model with only the predictors `pieces` and `is_city`.
+
+***Exercises 3--5***
+
+3.  Calculate the AIC for each of the three models.
+
+4.  Calculate the LOOCV estimate of the prediction error for the three models.
+
+    Hints:
+
+    -   You don't need to implement cross-validation directly. You can use the
+        formula presented in the lecture.
+
+    -   If you write a function that calculates LOOCV for any given model, you
+        can simply apply it to all three models.
+
+5.  Compare the AIC and LOOCV values for the above models and describe what you
+    see.
+
+# Prediction in a new dataset
+
+We now wish to use the best model to predict the sale price for some Lego sets
+that were not in our original sample.
+
+Run the following code to get a new dataset to work with:
+
+```{r}
+#| eval: false
+desired_rows <- c(82, 118, 159, 302, 420, 624, 802, 972, 1124, 1258)
+lego_new <- lego_population[desired_rows, ]
+```
+
+***Exercises 6--7***
+
+6.  Repeat the process you used in Exercise 1 to replace missing values with
+    suitable values.
+
+7.  Using the best model, predict the sale price for these new Lego sets.
+    Include a 95% prediction interval.
+
+Do you notice any problems with these predictions?
+
+The prediction intervals often give **negative** values, which does not make
+sense for a sale price. This is a deficiency of the model, and is due to the
+fact that the model imposes no constraints on the response variable (we assume
+it is normally distributed around the conditional mean given by the model
+equation).
+
+The fact that sale prices should be positive numbers also leads to another
+visible defect in the model: the residuals are heteroscedastic (as we observed
+last week; see Exercise 9 in Week 10).
+
+One way to try to fix both problems is to log-transform the sale prices before
+any modelling. That would ensure that only positive prices are possible. It
+will also use a scale that makes larger prices closer together, while spreading
+out the smaller prices, hopefully making them have similar variance across the
+whole set of prices.
+
+Often this works well and gives better models. However, it can also sometimes
+be too strong a transformation, and using something like a square root
+transformation can be a good compromise.
+
+When we apply any transformations, the data usually look quite different to
+before, so we should repeat all of the modelling steps and diagnostic checks.
+You can try doing a complete version of this on your own; for today, we will
+just do a more limited set of steps, as detailed in the following exercises.
+
+***Exercises 8--9***
+
+8.  Apply each of the following transformations to the sale price, re-fit the
+    model and re-do the predictions:
+
+    a)  Log
+    b)  Square root
+
+    What can you say about the predictions?\
+    Also, compare them to the reported sale prices that are in `lego_new` and
+    comment.
+
+9.  Plot the residuals against fitted values for each version of the model.
+    What can you conclude?

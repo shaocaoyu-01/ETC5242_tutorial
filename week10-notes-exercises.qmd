@@ -64,7 +64,9 @@ contain the data we will use for today's exercises.
 
 ```{r}
 lego <- lego_sample |>
-  filter(theme %in% c("Friends", "City"))
+  filter(theme %in% c("Friends", "City"))|>
+  replace_na(list(minifigures=0))|>
+  mutate(is_city = as.numeric(theme=="city"))
 ```
 
 These data were collected a few years ago and consist of a sample of
